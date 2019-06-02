@@ -34,7 +34,7 @@ x0 = np.array([0,R,0]+p0)
 dt = 0.4
 nsteps = 1000
 
-traj = Integrator.rk4(x0, dt, nsteps)
+(traj,tvec) = Integrator.rk4(x0, dt, nsteps)
 
 time = np.arange(0,dt*nsteps+1e-10, dt)
 
