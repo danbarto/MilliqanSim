@@ -22,7 +22,8 @@ def Draw3Dtrajs(trajs, colors=None, ax = None, fig=None, subplot=111):
         ax = fig.add_subplot(subplot, projection='3d')
 
     if colors==None:
-        colors = ['r','g','b','c','m','y']
+        # colors = ['r','g','b','c','m','y']
+        colors = ['r','c','y']
 
     nc = len(colors)
         

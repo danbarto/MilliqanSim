@@ -132,6 +132,8 @@ def rk4(x0, dt, nsteps, update_func=traverseBField,  cutoff=None, cutoffaxis=Non
         if cutoff!=None:
             if cutoffaxis==3 and np.linalg.norm(x[:3,i+1])>=cutoff:
                 return x[:,:i+2], tvec[:i+2]
+            if cutoffaxis==4 and np.linalg.norm(x[:2,i+1])>=cutoff:
+                return x[:,:i+2], tvec[:i+2]
             elif 0<=cutoffaxis<=2 and x[cutoffaxis,i+1]>=cutoff:
                 return x[:,:i+2], tvec[:i+2]
 

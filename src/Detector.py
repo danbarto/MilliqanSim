@@ -215,6 +215,30 @@ def FindIntersection(traj, tvec, detectorDict):
 
     return None, None, None, None, None, None
 
+def FindRIntersection(traj, tvec, detectorDict):
+    # find the intersection with a plane with normal norm
+    # and distance to origin dist. returns None if no intersection
+
+    dist = detectorDict["dist"]
+
+    for i in range(traj.shape[1]-1):
+        p1 = traj[:3,i]
+        p2 = traj[:3,i+1]
+        
+        r2 = np.linalg.norm(p2[:2])
+
+        if r2>=dist:
+            r1 = np.linalg.norm(p1[:2])
+            intersect = p1+(dist-r1)/(r2-r1)*(p2-p1)
+            t = tvec[i] + (dist-r1)/(r2-r1) * (tvec[i+1] - tvec[i])
+            pInt = traj[3:,i] + (dist-r1)/(r2-r1) * traj[3:,i+1]
+
+            return intersect,t,None,None,None,pInt
+
+            break
+
+    return None, None, None, None, None, None
+
 
 def getMilliqanDetector(distance=33.0, width=1.):
     
