@@ -6,21 +6,28 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-import Params
-import Integrator
+from Integrator import Integrator
+from Environment import Environment
 import Detector
 
-Params.BFieldOn = True
-Params.BFieldType = 'uniform'
-Params.MSCtype = 'none'
-Params.Q = 1
-Params.m = 0.5
+env = Environment(
+    mat_setup = None,
+    bfield = 'uniform',    
+)
+
+itg = Integrator(
+    environ = env,
+    Q = 1.0,
+    m = 0.5,
+    dt = 0.4,
+    nsteps = 1000,
+)
 
 p0 = [1000,0,1000]
 
 P = np.linalg.norm(p0)
 Pxy = np.linalg.norm(p0[:2])
-E = np.sqrt(P**2+Params.m**2)
+E = np.sqrt(P**2 + itg.m**2)
 Q = 1.
 B = 1.
 c = 2.9979e-1
@@ -31,12 +38,9 @@ w = 2*np.pi/T
 
 x0 = np.array([0,R,0]+p0)
 
-dt = 0.4
-nsteps = 1000
+traj,tvec = itg.propagate(x0)
 
-(traj,tvec) = Integrator.rk4(x0, dt, nsteps)
-
-time = np.arange(0,dt*nsteps+1e-10, dt)
+time = np.arange(0,itg.dt*itg.nsteps+1e-10, itg.dt)
 
 predx = R*np.sin(w*time) 
 predy = R*np.cos(w*time)

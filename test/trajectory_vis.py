@@ -7,33 +7,28 @@
 ##   - 3D view - a rotatable 3D visualization of the trajectories
 
 import sys
-try:
-    sys.path.remove('/home/users/bemarsh/.local/lib/python2.7/site-packages/matplotlib-1.4.3-py2.7-linux-x86_64.egg')
-except:
-    pass
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-import Params
-import Integrator
-import Detector
+from Integrator import Integrator
+from Environment import Environment
 import Drawing
 
-## this must be present at the beginning of the main script
-## it unpickles the object and stores the array in memory
-Detector.LoadCoarseBField("../bfield/bfield_coarse.pkl")
+env = Environment(
+    mat_setup = 'cms',  # use very simple model of CMS material setup
+    bfield = 'cms',     # use CMS b field
+    bfield_file = "../bfield/bfield_coarse.pkl",
+    )
 
-# this tells it to use the CMS magnetic field
-Params.BFieldType = 'cms'
-# charge of the particle
-Params.Q = 1.0
-# use PDG scattering. This should probably always be the case
-scatterType = 'PDG'
-Params.MSCtype = scatterType
-# use our simple model of CMS for the material
-Params.MatSetup = 'cms'
-# turn on dE/dx energy loss
-Params.EnergyLossOn=True
+itg = Integrator(
+    environ = env,
+    Q = 1.0,  # charge in units of e
+    m = 105., # mass in MeV
+    dt = 0.1, # timestep in ns
+    nsteps = 700, # number of timesteps to simulate
+    multiple_scatter = 'pdg',
+    do_energy_loss = True,
+)
 
 # define the initial momenta (in MeV)
 # just define 5 for now, all in the +x direction
@@ -49,10 +44,6 @@ print 'Initial Momenta (colors r,g,b,c):'
 for i in range(len(init_p)):
     print ' -',round(np.linalg.norm(init_p[i])/1000, 1), "GeV"
 
-# set the timestep and number of steps to simulate
-dt = 0.1
-nsteps = 700
-
 # compute trajectories. Each trajectory is a 2D numpy array,
 # where the first dimension contains (x,y,z,px,py,pz),
 # and the second dimension is the "timestep"
@@ -60,7 +51,7 @@ nsteps = 700
 trajs = [None for i in init_p]
 for i in range(len(init_p)):
     x0 = np.array([0,0,0]+init_p[i])
-    trajs[i] = Integrator.rk4(x0, dt, nsteps)
+    trajs[i],_ = itg.propagate(x0)
 
 fig = plt.figure(1, figsize=(14.5,5.5))
 
@@ -68,7 +59,7 @@ fig = plt.figure(1, figsize=(14.5,5.5))
 
 ## XZ slice
 plt.subplot2grid((1,5),(0,0),colspan=3)
-Drawing.DrawXZslice(trajs, colors=colors, ax=plt.gca(), drawBField=True)
+Drawing.DrawXZslice(trajs, colors=colors, ax=plt.gca(), drawBFieldFromEnviron=env)
 
 plt.axis([-15,15,-9,9])
 plt.xlabel("z (m)")
@@ -85,7 +76,6 @@ plt.ylabel("y (m)")
 ## 3d view
 fig = plt.figure(num=2, figsize=(8, 8))
 Drawing.Draw3Dtrajs(trajs)
-
 
 plt.show()
 
