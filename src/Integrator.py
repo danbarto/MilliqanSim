@@ -102,7 +102,7 @@ class Integrator(object):
         if self.randomize_charge_sign:
             self.Q *= (2*np.random.randint(2) - 1)
 
-        x0 = np.array(x0)
+        x0 = np.array(x0, dtype=float)
         x = np.zeros((x0.size, self.nsteps+1))
         x[:,0] = x0
         t = 0
