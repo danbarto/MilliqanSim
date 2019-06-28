@@ -77,33 +77,32 @@ def DrawXYslice(trajs, colors=None, ax=None, fig=None, subplot=111):
     ax.set_xlim((-9,9))
     ax.set_ylim((-9,9))
 
-def DrawXZslice(trajs, colors=None, ax=None, fig=None, subplot=111, drawBField=None):
+def DrawXZslice(trajs, colors=None, ax=None, fig=None, subplot=111, drawBFieldFromEnviron=None, drawColorbar=False):
     # draws projected trajectories in z=0 plane
     # see above for argument descriptions
 
-    if ax == None:
-        if fig==None:
+    if ax is None:
+        if fig is None:
             fig = plt.gcf()
         ax = fig.add_subplot(subplot)
 
-    if colors==None:
+    if colors is None:
         colors = ['r','g','b','c','m','y']
-
-    if drawBField==None:
-        if Params.BFieldLoaded:
-            drawBField = True
-        else:
-            drawBField = False
-
     nc = len(colors)
 
-    # draw B field
-    x = np.arange(-Params.RMAX, Params.RMAX+1e-10, Params.DR)/100
-    z = np.arange(Params.ZMIN, Params.ZMAX+1e-10, Params.DZ)/100
-    Z,X = np.meshgrid(z,x)
+    if drawBFieldFromEnviron is not None:        
+        env = drawBFieldFromEnviron
+        # draw B field
+        x = np.arange(-env.RMAX, env.RMAX+1e-10, env.DR)/100
+        z = np.arange(env.ZMIN, env.ZMAX+1e-10, env.DZ)/100
+        Z,X = np.meshgrid(z,x)
 
-    mag = np.append(Params.Bmag[::-1,:,0],Params.Bmag[1:,:,180/Params.DPHI],0)
-    bmplot = plt.pcolor(Z,X,mag,cmap='afmhot',vmax=5.0)
+        mag = np.append(env.Bmag[::-1,:,0],env.Bmag[1:,:,180/env.DPHI],0)
+        bmplot = plt.pcolor(Z,X,mag,cmap='afmhot',vmax=5.0)
+        
+        if drawColorbar:
+            bmcb = plt.colorbar(bmplot)
+            bmcb.set_label('B (T)',fontsize=14)
 
     # draw trajectories
     for i in range(len(trajs)):

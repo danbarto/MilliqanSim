@@ -51,7 +51,7 @@ k=3
 
 plt.axis([-1500,1500,-900,900])
 
-plt.savefig('cms_bfield_coarse.png')
+plt.savefig('cms_bfield_coarse.png', bbox_inches='tight')
 
 # dpi = 80.0
 # xpixels, ypixels = 3001, 1801
