@@ -3,7 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import Params
+from Environment import Environment
 
 ## 3d view
 
@@ -30,7 +30,7 @@ def Draw3Dtrajs(trajs, colors=None, ax = None, fig=None, subplot=111):
     for i in range(len(trajs)):
         ax.plot3D(xs=trajs[i][0,:], ys=trajs[i][1,:], zs=trajs[i][2,:], color=colors[i%nc])
 
-    sr, sl = Params.solRad, Params.solLength
+    sr, sl = Environment.CMS_RADIUS, Environment.CMS_LENGTH
     t = np.linspace(0, 2*np.pi, 100)
     ax.plot(xs=sr*np.cos(t), ys=sr*np.sin(t), zs=sl/2, color='k')
     ax.plot(xs=sr*np.cos(t), ys=sr*np.sin(t), zs=-sl/2, color='k')
@@ -65,8 +65,8 @@ def DrawXYslice(trajs, colors=None, ax=None, fig=None, subplot=111):
     nc = len(colors)
 
     # draw solenoid outline
-    sr = Params.solRad
-    sl = Params.solLength
+    sr = Environment.CMS_RADIUS
+    sl = Environment.CMS_LENGTH
     t = np.linspace(0, 2*np.pi, 100)
     ax.plot(sr*np.cos(t),sr*np.sin(t), '-')
 

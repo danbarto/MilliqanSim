@@ -81,7 +81,9 @@ class Environment(object):
         if m is None:
             m = "none"
         m = m.lower()
-        if m not in ["none", "air", "iron", "sife", "cms"]:
+        allowed = ["none", "sife", "cms"]
+        allowed += ["unif_"+mat for mat in Environment.materials]
+        if m not in allowed:
             raise Exception("Unrecognized material setup: "+m)
         self.__mat_setup = m
 
@@ -156,11 +158,8 @@ class Environment(object):
         if self.__mat_function is not None:
             return self.__mat_function(x,y,z)
 
-        if self.mat_setup == 'air':
-            return 'air'
-
-        if self.mat_setup == 'iron':
-            return 'fe'
+        if self.mat_setup.startswith("unif"):
+            return self.mat_setup.split("_")[1]
 
         if self.mat_setup == 'sife':
             if x<4:

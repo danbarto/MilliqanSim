@@ -1,11 +1,92 @@
-## MultipleScatter.py
-## methods relating to multiple scattering
+## MatterInteraction.py
+## methods relating to interaction with matter (energy loss, multiple scattering)
 
 import numpy as np
-import Detector
-import Params
+from Environment import Environment
 
-def getNormVector(v):
+def doEnergyLoss(itg, x, dt):
+    ## returns new x after losing proper amount of energy according to Bethe-Bloch
+
+    p = x[3:]
+    magp = np.linalg.norm(p)
+    E = np.sqrt(magp**2 + itg.m**2)
+    gamma = E / itg.m
+    beta = magp / E;
+    me = 0.511;  #electron mass in MeV
+    
+    Wmax = 2*me*beta**2*gamma**2/(1+2*gamma*me/itg.m + (me/itg.m)**2)
+    K = 0.307075  # in MeV cm^2/mol
+
+    mat = itg.environ.GetMaterial(x[0],x[1],x[2])
+    Z,A,rho,X0 = Environment.materials[mat]
+    I,a,k,x0,x1,Cbar,delta0 = Environment.dEdx_params[mat]
+
+    I = I/1e6  ## convert from eV to MeV
+
+    xp = np.log10(magp/itg.m)
+    if xp>=x1:
+        delta = 2*np.log(10)*xp - Cbar
+    elif xp>=x0:
+        delta = 2*np.log(10)*xp - Cbar + a*(x1-xp)**k
+    else:
+        delta = delta0*10**(2*(xp-x0))
+
+    # mean energy loss in MeV/cm
+    dEdx = K*rho*itg.Q**2*Z/A/beta**2*(0.5*np.log(2*me*beta**2*gamma**2*Wmax/I**2) - beta**2 - delta/2)
+
+    dE = dEdx * beta*2.9979e1 * dt
+
+    if dE>(E-itg.m):
+        return np.array([x[0], x[1], x[2], 0, 0, 0])
+
+    newmagp = np.sqrt((E-dE)**2-itg.m**2)
+    x[3:] = p*newmagp/magp
+
+    return x
+
+def multipleScatterPDG(itg, x, dt):
+    # get the angles/displacements from above function and return the
+    # net change in x=(x,y,z,px,py,pz)
+
+    if itg.environ.GetMaterial(x[0],x[1],x[2])=='air':
+        return np.zeros(6)
+
+    p = x[3:]
+
+    vx = _getNormVector(p)
+    vy = np.cross(vx, p/np.linalg.norm(p))
+
+    thetax, thetay, yx, yy = _getScatterAnglePDG(itg, x, dt)
+
+    # transverse displacement
+    disp = yx*vx + yy*vy
+    
+    # deflection in momentum
+    defl = np.linalg.norm(p) * (thetax*vx + thetay*vy)
+
+    return np.append(disp, defl)
+
+def multipleScatterKuhn(itg, x, dt):
+    # use the method from Kuhn paper
+
+    if itg.environ.GetMaterial(x[0],x[1],x[2])=='air':
+        return np.zeros(6)
+
+    p = x[3:]
+    theta = _getScatterAngleKuhn(itg, x, dt)
+
+    if theta==-1:
+        return multipleScatterPDG(itg, x, dt)
+
+    vx = _getNormVector(p)
+    
+    # deflection in momentum
+    defl = np.linalg.norm(p) * (theta*vx)
+
+    return np.append(np.zeros(3), defl)
+
+
+def _getNormVector(v):
     # generate and return a random vector in the plane orthogonal to v
 
     v = np.array(v)
@@ -41,17 +122,17 @@ def getNormVector(v):
 
     return random_unit
 
-def getKuhnScatteringParams(x, dt):
+def _getKuhnScatteringParams(itg, x, dt):
 
-    mat = Params.matFunction(x[0],x[1],x[2])
+    mat = itg.environ.GetMaterial(x[0],x[1],x[2])
 
-    Z,A,rho,X0 = Params.materials[mat]
+    Z,A,rho,X0 = Environment.materials[mat]
 
-    z = abs(Params.Q)
+    z = abs(itg.Q)
 
     p = x[3:]
     magp = np.linalg.norm(p)
-    v = p/np.sqrt(magp**2 + Params.m**2)
+    v = p/np.sqrt(magp**2 + itg.m**2)
     beta = np.linalg.norm(v)
 
     ds = beta * 2.9979e1 * dt
@@ -60,9 +141,6 @@ def getKuhnScatteringParams(x, dt):
     b = np.log(6700*z**2*Z**(1./3)*(Z+1)*rho*ds/A / (beta**2+1.77e-4*z**2*Z**2))
 
     if b<3:
-        if not Params.MSCWarning:
-            print "Warning: something (probably Q) is too small! Using PDG MSC algorithm."
-            Params.MSCWarning = True
         return -1,-1
 
     ## we want to solve the equation B-log(B) = b. Using Newton-Raphson
@@ -82,10 +160,10 @@ def getKuhnScatteringParams(x, dt):
     return Xc, B+1
 
 
-def getScatterAngleKuhn(x, dt):
+def _getScatterAngleKuhn(itg, x, dt):
     # use Kuhn method to multiple scatter
 
-    Xc, B = getKuhnScatteringParams(x, dt)
+    Xc, B = _getKuhnScatteringParams(itg, x, dt)
     if Xc==-1:
         return -1
 
@@ -107,27 +185,7 @@ def getScatterAngleKuhn(x, dt):
 
     return th
 
-def multipleScatterKuhn(x, dt):
-    # use the method from Kuhn paper
-
-    if Params.matFunction(x[0],x[1],x[2])=='air':
-        return np.zeros(6)
-
-    p = x[3:]
-    theta = getScatterAngleKuhn(x, dt)
-
-    if theta==-1:
-        return multipleScatterPDG(x,dt)
-
-    vx = getNormVector(p)
-    
-    # deflection in momentum
-    defl = np.linalg.norm(p) * (theta*vx)
-
-    return np.append(np.zeros(3), defl)
-
-
-def getScatterAnglePDG(x, dt):
+def _getScatterAnglePDG(itg, x, dt):
     # return thetax, thetay, yx, yy
     # given a velocity and timestep, compute a
     # deflection angle and deviation due to multiple scattering
@@ -139,7 +197,7 @@ def getScatterAnglePDG(x, dt):
 
     p = x[3:]
     magp = np.linalg.norm(p) # must be in MeV
-    E = np.sqrt(magp**2 + Params.m**2)
+    E = np.sqrt(magp**2 + itg.m**2)
     v = p/E
     beta = np.linalg.norm(v)
 
@@ -149,15 +207,15 @@ def getScatterAnglePDG(x, dt):
     ## and transverse displacement y for the given momentum. This is taken
     ## from the PDG review chapter on the Passage of Particles through Matter
 
-    mat = Params.matFunction(x[0],x[1],x[2])
+    mat = itg.environ.GetMaterial(x[0],x[1],x[2])
 
-    X0 = Params.materials[mat][3]
+    X0 = Environment.materials[mat][3]
 
-    if X0<=0:
+    if X0 <= 0:
         return np.zeros(6)
 
     # rms of projected theta distribution.
-    theta0 = 13.6/(beta*magp) * abs(Params.Q) * np.sqrt(dx/X0) * (1 + 0.038*np.log(dx/X0))
+    theta0 = 13.6/(beta*magp) * abs(itg.Q) * np.sqrt(dx/X0) * (1 + 0.038*np.log(dx/X0))
     
     # correlation coefficient between theta_plane and y_plane
     rho = 0.87
@@ -175,25 +233,3 @@ def getScatterAnglePDG(x, dt):
     thetay = z2*theta0
 
     return thetax, thetay, yx, yy
-
-def multipleScatterPDG(x, dt):
-    # get the angles/displacements from above function and return the
-    # net change in x=(x,y,z,px,py,pz)
-
-    if Params.matFunction(x[0],x[1],x[2])=='air':
-        return np.zeros(6)
-
-    p = x[3:]
-
-    vx = getNormVector(p)
-    vy = np.cross(vx, p/np.linalg.norm(p))
-
-    thetax, thetay, yx, yy = getScatterAnglePDG(x, dt)
-
-    # transverse displacement
-    disp = yx*vx + yy*vy
-    
-    # deflection in momentum
-    defl = np.linalg.norm(p) * (thetax*vx + thetay*vy)
-
-    return np.append(disp, defl)
