@@ -7,7 +7,8 @@ import MatterInteraction as mi
 
 class Integrator(object):
     def __init__(self, environ, m, Q, dt, nsteps, cutoff_dist=None, cutoff_axis=None, use_var_dt=False, lowv_dx=None,
-                 multiple_scatter=None, do_energy_loss=False, update_func=None, suppress_stopped_warn=True):
+                 multiple_scatter=None, do_energy_loss=False, update_func=None, randomize_charge_sign=False,
+                 suppress_stopped_warn=True):
         # environ: an Environment class object through which to propagate particle
         # m,Q : the mass and charge of the particle to propagate
         # dt, nsteps: timestep (in ns) and maximum number of steps
@@ -19,6 +20,7 @@ class Integrator(object):
         # multiple_scatter: algorithm to use for multiple scattering. Can be 'none', 'pdg', 'kuhn'
         # do_energy_loss: simulate dE/dx energy loss
         # update func: if you want to specify a custom update function that computes dx/dt at each timestep
+        # randomize_charge_sign: everytime propagate is called, randomly flip sign of Q
 
         self.environ = environ
         self.m = m
@@ -31,6 +33,7 @@ class Integrator(object):
         self.lowv_dx = lowv_dx
         if use_var_dt and lowv_dx is None:
             raise Exception("must specify a lowv_dx if using variable dt!")
+        self.randomize_charge_sign = randomize_charge_sign
 
         self.multiple_scatter = multiple_scatter
         self.do_energy_loss = do_energy_loss
@@ -91,10 +94,13 @@ class Integrator(object):
         return dxdt
 
     # 4th order runge-kutta integrator
-    def rk4(self, x0):
+    def propagate(self, x0):
         # x0 is a vector of initial values e.g. (x0,y0,z0,px0,py0,pz0)
         # return value is an N by nsteps+1 array, where N is the size of x0
         # each column is x at the next time step
+
+        if self.randomize_charge_sign:
+            self.Q *= (2*np.random.randint(2) - 1)
 
         x0 = np.array(x0)
         x = np.zeros((x0.size, self.nsteps+1))
