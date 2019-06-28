@@ -28,16 +28,12 @@ import math
 import time
 import os.path
 import sys
-try:
-    sys.path.remove('/home/users/bemarsh/.local/lib/python2.7/site-packages/matplotlib-1.4.3-py2.7-linux-x86_64.egg')
-except:
-    pass
 import numpy as np
 import matplotlib.pyplot as plt
 import ROOT
-import Params
-import Integrator
-import Detector
+from Environment import Environment
+from Integrator import Integrator
+from Detector import *
 import Drawing
 from MilliTree import MilliTree
 import run_params as rp
@@ -55,41 +51,41 @@ if mode=="STATS":
     trajs = []
     print "Simulating {0} hits on the detector.".format(ntrajs)
     print 
-
 visWithStats = False
-
-suffix = sys.argv[1]
-
-# try:
-#     os.makedirs("../output_data")
-# except:
-#     pass
-
-# outname = "../output_data/test.txt"
-outname = "../output_{0}.txt".format(suffix)
-outnameCustom = "../customOutput_{0}.txt".format(suffix)
 
 if mode=="STATS":
     print "Outputting to "+outname
 
-# must run at the beginning of main script. Loads the B field map into memory
-Detector.LoadCoarseBField("../bfield/bfield_coarse.pkl")
+env = Environment(
+    mat_setup = 'cms',
+    bfield = rp.bfield_type,
+    bfield_file = "../bfield/bfield_coarse.pkl",
+    rock_begins = rp.rock_begins,
+    mat_function = rp.matFunction if rp.useCustomMaterialFunction else None
+)
 
-# turn on CMS magnetic field and PDG multiple scattering
-Params.BFieldType = rp.BFieldType
-Params.MSCtype = 'pdg'
-Params.MatSetup='cms'
-# turn on dE/dx energy loss (Bethe-Bloch)
-Params.EnergyLossOn = True
-# charge and mass of the particle. Q in units of electric charge, m in MeV
-Params.Q = rp.particleQ
-Params.m = rp.particleM
-#suppress annoying warnings
-Params.SuppressStoppedWarning = False
-Params.RockBegins = rp.RockBegins
+itg = Integrator(
+    environ = env,
+    Q = rp.particleQ,
+    m = rp.particleM,
+    dt = rp.dt,
+    nsteps = rp.max_nsteps,
+    cutoff_dist = rp.cutoff,
+    cutoff_axis = 'r',
+    use_var_dt = rp.use_var_dt,
+    lowv_dx = 0.01,
+    multiple_scatter = 'pdg',
+    do_energy_loss = True,
+    randomize_charge_sign = False,
+    )
 
-if rp.useCustomMaterialFunction:
-    Params.matFunction = rp.matFunction
+det = PlaneDetector(
+    dist_to_origin = rp.distToDetector,
+    eta = rp.eta,
+    phi = 0.0,
+    width = rp.detWidth,
+    height = rp.detHeight,
+)
 
 # make sure numbers are new each run
 ROOT.gRandom.SetSeed(0)
@@ -98,30 +94,16 @@ rootfile = ROOT.TFile(rp.pt_spect_filename)
 # this is a 1D pT distribution (taken from small-eta events)
 pt_dist = rootfile.Get("pt")
 
-dt = rp.dt
-nsteps = rp.max_nsteps    
-
-center = rp.centerOfDetector
-distToDetect = np.linalg.norm(center)
-normToDetect = center/distToDetect
-
-detV = np.array([0., 1., 0.])
-detW = np.cross(normToDetect, detV)
-
-detWidth = rp.detWidth
-detHeight = rp.detHeight
-detDepth = rp.detDepth
-
-detectorDict = {"norm":normToDetect, "dist":distToDetect, "v":detV, 
-            "w":detW, "width":detWidth, "height":detHeight, "depth":detDepth}
-
-# the four corners (only for drawing)
-c1,c2,c3,c4 = Detector.getDetectorCorners(detectorDict)
-
-intersects = []
-ntotaltrajs = 0
-
 mt = MilliTree()
+
+# setup output file
+suffix = sys.argv[1]
+try:
+    os.makedirs("output_data")
+except:
+    pass
+outname = "output_data/output_{0}.txt".format(suffix)
+outnameCustom = "customOutput_{0}.txt".format(suffix)
 
 if mode=="STATS":
     # if file already exists, check if we want to overwrite or append
@@ -149,6 +131,9 @@ if mode=="STATS":
 
 starttime = time.time()
 
+intersects = []
+ntotaltrajs = 0
+
 # loop until we get ntrajs trajectories (VIS) or hits (STATS)
 while len(trajs)<ntrajs:
     magp = ROOT.Double(-1)
@@ -168,47 +153,42 @@ while len(trajs)<ntrajs:
     # magp = magp/np.sin(th)
     phimin, phimax =  rp.phibounds
     phi = np.random.rand() * (phimax-phimin) + phimin
-    Params.Q *= np.random.randint(2)*2 - 1 
-    phi *= Params.Q/abs(Params.Q)
+    itg.Q *= np.random.randint(2)*2 - 1 
+    phi *= itg.Q/abs(itg.Q)
 
-    # convert to cartesian momentum
+    # convert to cartesian momentum in MeV
     p = 1000*magp * np.array([np.sin(th)*np.cos(phi),np.sin(th)*np.sin(phi),np.cos(th)])
     x0 = np.array([0,0,0,p[0],p[1],p[2]])
     
     # simulate until nsteps steps is reached, or the particle passes x=10
-    traj,tvec = Integrator.rk4(x0, dt, nsteps, cutoff=rp.cutoff, cutoffaxis=3, use_var_dt=rp.use_var_dt)
+    traj,tvec = itg.propagate(x0)
     ntotaltrajs += 1
     if mode=="VIS":
         trajs.append(traj)
 
-    # print np.linalg.norm(traj[:3,-1]), np.linalg.norm(traj[3:,-1])
-
     # compute the intersection. Will return None if no intersection
-    findIntersection = Detector.FindIntersection
-    if rp.useCustomIntersectionFunction:
-        findIntersection = rp.intersectFunction
-    intersection, t, theta, thW, thV, pInt = findIntersection(traj, tvec, detectorDict)
-    if intersection is not None:
-        intersects.append(intersection)
+    idict = det.FindIntersection(traj, tvec)
+    if idict is not None:
+        intersects.append(idict["x_int"])
         print len(trajs), ": p =",magp, ", eta =", eta, ", phi =", phi, ", eff =", float(len(intersects))/ntotaltrajs
         if mode=="VIS":
             pass
-        if mode=="STATS":
+        elif mode=="STATS":
             if visWithStats:
                 trajs.append(traj)
             else:
                 trajs.append(0)
-            w = np.dot(intersection, detectorDict['w'])
-            v = np.dot(intersection, detectorDict['v'])
-            magpint = np.linalg.norm(pInt)
+            magpint = np.linalg.norm(idict["p_int"])
             txtfile = open(outname,'a')
-            txtfile.write("{0:f}\t{1:f}\t{2:f}\t{3:f}\t{4:f}\t{5:f}\t{6:f}\t{7:f}\t{8:f}\t{9:f}\t{10:f}\t{11:f}\t{12:f}\n".format(t,Params.Q,Params.m,magp,magp*np.sin(th),eta,phi,theta,thW,thV,w,v,magpint))
+            txtfile.write("{0:f}\t{1:f}\t{2:f}\t{3:f}\t{4:f}\t{5:f}\t{6:f}\t{7:f}\t{8:f}\t{9:f}\t{10:f}\t{11:f}\t{12:f}\n".format(
+                    t, itg.Q, itg.m, magp, magp*np.sin(th), eta, phi,
+                    idict["theta"], idict["theta_w"], idict["theta_v"], idict["w"], idict["v"], magpint))
             txtfile.close()
             if rp.useCustomOutput:
                 txtfile = open(outnameCustom, 'a')
-                txtfile.write("\t".join(str(x) for x in rp.outputFunction(traj, detectorDict)) + '\n')
+                txtfile.write("\t".join(str(x) for x in rp.outputFunction(traj, det)) + '\n')
                 txtfile.close()
-            mt.SetValues(intersection, pInt)
+            mt.SetValues(idict["x_int"], idict["p_int"])
             mt.Fill()
 
 endtime = time.time()
@@ -217,9 +197,9 @@ print "Efficiency:", float(len(intersects))/ntotaltrajs
 print "Total time: {0:.2f} sec".format(endtime-starttime)
 print "Time/Hit: {0:.2f} sec".format((endtime-starttime)/ntrajs)
 
-mt.Write("../output_{0}.root".format(suffix))
+mt.Write("output_data/output_{0}.root".format(suffix))
 
-fid = ROOT.TFile("../output_{0}.root".format(suffix), "UPDATE")
+fid = ROOT.TFile("output_data/output_{0}.root".format(suffix), "UPDATE")
 
 hhits = ROOT.TH1F("hhits","",1,0,2)
 hsims = ROOT.TH1F("hsims","",1,0,2)
@@ -235,6 +215,9 @@ if mode=="VIS" or visWithStats:
 
     Drawing.Draw3Dtrajs(trajs, subplot=121)
 
+
+    # the four corners
+    c1,c2,c3,c4 = det.GetCorners()
     Drawing.DrawLine(c1,c2,is3d=True)
     Drawing.DrawLine(c2,c3,is3d=True)
     Drawing.DrawLine(c3,c4,is3d=True)
@@ -245,12 +228,13 @@ if mode=="VIS" or visWithStats:
 
     Drawing.DrawXYslice(trajs, subplot=122)
 
-    plt.figure(num=2)
-    Drawing.DrawXZslice(trajs)
+    plt.figure(num=2, figsize=(11.7,7))
+    Drawing.DrawXZslice(trajs, drawBFieldFromEnviron=env, drawColorbar=True)
 
     plt.figure(3)
-    rvals = np.linalg.norm(trajs[0][:3,:], axis=0)
-    pvals = np.linalg.norm(trajs[0][3:,:], axis=0)
-    plt.plot(rvals,pvals)
+    for traj in trajs:
+        rvals = np.linalg.norm(traj[:3,:], axis=0)
+        pvals = np.linalg.norm(traj[3:,:], axis=0)
+        plt.plot(rvals,pvals)
 
     plt.show()

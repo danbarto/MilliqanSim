@@ -70,7 +70,7 @@ Drawing.DrawLine(c4,c1,is3d=True)
 for inter in intersects:
     if inter is None:
         continue
-    Drawing.DrawLine(inter["intersect"],inter["intersect"],is3d=True,linestyle='None',marker='o',color='r')
+    Drawing.DrawLine(inter["x_int"],inter["x_int"],is3d=True,linestyle='None',marker='o',color='r')
 Drawing.DrawXYslice(trajs, subplot=122)
 
 plt.figure(figsize=(11.7,7))

@@ -85,7 +85,7 @@ class PlaneDetector(object):
             pInt = traj[3:,idx-1] + frac * (traj[3:,idx] - traj[3:,idx-1])
 
             return {
-                "intersect" : intersect,
+                "x_int" : intersect,
                 "t_int" : t,
                 "p_int" : pInt,
                 "v" : v,
