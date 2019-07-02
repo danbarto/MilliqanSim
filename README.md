@@ -37,12 +37,12 @@ Examples of their use are in `test/functionality_tests.py`.
 1. **Environment.py** - implements an `Environment` class that stores b-field/material configuration. Also contains constants defining material properties.
 2. **Integrator.py** -  implements an `Integrator` class that controls the propagation of particles through a given `Environment`
 3. **Detector.py** - contains classes implementing "Detectors". These take a trajectory as input and return information about the interaction of the particle 
-with the detector. E.g., the location and direction of a particle upon intersection with a detector face. Currently only one, `PlaneDetector` is officially implemented,
+with the detector. E.g., the location and direction of a particle upon intersection with a detector face. Currently only one, `PlaneDetector`, is officially implemented,
 but more advanced functionality is possible.
 4. **MatterInteractions.py** - methods implementing multiple scattering and Bethe-Bloch energy loss (used internally, probably don't need to touch in user script)
 5. **Drawing.py** - various methods to make plots of trajectories
 
-The `test` directory contains a few well-commented example scripts that should give a good idea of how to use the program. In addition,
+The `test` directory contains a few well-commented example scripts that should give a good idea of how to use the program. In addition
 to the test scripts mentioned above, `milliqan_test.py` is a program to simulate particle hits (muons or mCPs) on a pseudo Milliqan detector.
 
 The `bfield` directory contains the pickled-version of the CMS magnetic field map. This is loaded into memory at the start
@@ -58,39 +58,41 @@ the user-written main script. A few examples of these are in the `test` director
 (with desired B-field and material setup), and then an `Integrator` that will propagate particles through this environment.
 Configurable parameters for these classes are listed below:
 
-**Environment**
-1. `bfield`: one of `["none", "uniform", "updown", "cms"]`. `uniform` is a uniform 1 T field in the +z direction. `cms` will load the
+**Environment** parameters:
+1. `bfield`: one of `["none", "uniform", "updown", "cms"]`. `"uniform"` is a uniform 1 T field in the +z direction. `"cms"` will load the
 CMS magnetic field map defined in the file provided to the next argument
-2. `bfield_file`: the pickled file of arrays containg the CMS magentic field. Required if `bfield = 'cms'` above. The map is located in `bfield/bfield_coarse.pkl`.
+2. `bfield_file`: the pickled file of arrays containg the CMS magentic field. Required if `bfield = "cms"` above. The map is located in `bfield/bfield_coarse.pkl`.
 3. `mat_setup`: one of `["none", "sife", "cms"]`, or `"unif_"+mat_name`, where `mat_name` is any of the defined materials (for a uniform material).
-`cms` is a very simplified model of CMS.
+`"cms"` is a very simplified model of CMS.
 4. `interpolate_b`: whether to interpolate B-field values, or just use closest defined point (default `True`).
 5. `use_fine_bfield`: configure to use a fine-binned B-field (used in the past, probably never needed anymore)
-6. `rock_begins`: If using `mat_setup = 'cms'`, this is the distance from the origin where a uniform `"rock"` material is assumed.
+6. `rock_begins`: If using `mat_setup = "cms"`, this is the distance from the origin where a uniform `"rock"` material is assumed.
 
-**Integrator**
+**Integrator** parameters:
 1.  `environ`: an Environment class object through which to propagate particle
 2.  `m,Q` : the mass and charge of the particle to propagate
 3.  `dt, nsteps`: timestep (in ns) and maximum number of steps to simulate
 4.  `cutoff_dist`: stop propagation early once it reaches this distance
-5.  `cutoff_axis`: how to measure this distance. `'x','y','z'` for the x,y,z coordinates. `'r'` for `srqt(x^2+y2)`. `'R'` for `sqrt(x^2+y^2+z^2)`
-6.  `multiple_scatter`: algorithm to use for multiple scattering. Can be one of `['none', 'pdg', 'kuhn']`
+5.  `cutoff_axis`: how to measure this distance. `'x','y','z'` for the x, y, z coordinates. `'r'` for `srqt(x^2+y2)`. `'R'` for `sqrt(x^2+y^2+z^2)`
+6.  `multiple_scatter`: algorithm to use for multiple scattering. Can be one of `['none', 'pdg', 'kuhn']` (`'pdg'` is simple small-angle gaussian scattering
+described in [this PDG chapter](http://pdg.lbl.gov/2019/reviews/rpp2018-rev-passage-particles-matter.pdf). `'kuhn'` is a more advanced algorithm that has
+more realistic, larger tails in the scattering angle distribution ("Rutherford scattering"). Probably not necessary).
 7.  `do_energy_loss`: simulate dE/dx energy loss
 8.  `use_var_dt: if this is `True`, then use a variable dt when velocity is low (when momentum < mass)
 9.  `lowv_dx`: if use_var_dt is set, this is the fixed spatial displacement to use when recomputing dt (in m)
 10. `update func`: if you want to specify a custom update function that computes dx/dt at each timestep
-11. `randomize_charge_sign`: everytime propagate is called, randomly flip sign of Q
+11. `randomize_charge_sign`: everytime 'propagate' is called, randomly flip sign of Q
 
 You can also define a `Detector` object that will take a computed trajectory and return information. Currently the only
 one implemented is `PlaneDetector`, which is a rectangular plane with normal vector pointing at the origin.
 
-**PlaneDetector**
+**PlaneDetector** parameters:
 1. `dist_to_origin`: the distance from the face of the detector to the origin.
 2. `eta, phi`: the eta/phi of the center of detector face.
 3. `width, height`: the dimensions of rectagular. If either or both are `None`, that dimension is infinite.
 
 Once you've defined everything, you can call the `Integrator.propagate` method to compute a particle trajectory. This implements a Runge-Kutta integrator
-that will propagate a particle through the magnetic field, and simulate multiple scattering/energy loss if these are turned on.
+that will propagate a particle through the magnetic field, and simulates multiple scattering/energy loss if these are turned on.
 The only argument is a 6-element vector `x0` that contains the initial position and momentum `[x, y, z, px, py, pz]` (as always, position is in meters and momentum in MeV).
 At each timestep, the function `Integrator.update_func` is called (defaults to `Integrator.dxdt_bfield`) that computes dx/dt given the current time/position/momentum.
 This is used to update the 6-element x vector. The change in position/momentum are modified to account for multiple scattering and energy loss if turned on
@@ -99,4 +101,4 @@ This is used to update the 6-element x vector. The change in position/momentum a
 The return value of `Integrator.propagate` is a 6-by-(nsteps+1) array. Each column contains `[x,y,z,px,py,pz]` at a specific timestep.
 
 The `PlaneDetector.FindIntersection` method takes the trajectory array defined above and computes statistics on the intersection with
-and external plane. It returns a dictionary of useful values. See `millisim/Detector.py` and `test/milliqan_test.py` for details.
+an external plane. It returns a dictionary of useful values. See `millisim/Detector.py` and `test/milliqan_test.py` for details.
