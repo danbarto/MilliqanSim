@@ -6,14 +6,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from Integrator import Integrator
-from Environment import Environment
-import Detector
+from millisim.Environment import Environment
+from millisim.Integrator import Integrator
 
 env = Environment(
     mat_setup = None,
     bfield = 'uniform',    
-)
+    )
 
 itg = Integrator(
     environ = env,
@@ -21,7 +20,7 @@ itg = Integrator(
     m = 0.5,
     dt = 0.4,
     nsteps = 1000,
-)
+    )
 
 p0 = [1000,0,1000]
 

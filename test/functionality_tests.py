@@ -6,10 +6,10 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from Environment import Environment
-from Integrator import Integrator
-from Detector import *
-import Drawing
+from millisim.Environment import Environment
+from millisim.Integrator import Integrator
+from millisim.Detector import *
+import millisim.Drawing as Drawing
 from tqdm import tqdm
 
 env = Environment(

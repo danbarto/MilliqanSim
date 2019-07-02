@@ -10,9 +10,9 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from Integrator import Integrator
-from Environment import Environment
-import Drawing
+from millisim.Environment import Environment
+from millisim.Integrator import Integrator
+import millisim.Drawing as Drawing
 
 env = Environment(
     mat_setup = 'cms',  # use very simple model of CMS material setup

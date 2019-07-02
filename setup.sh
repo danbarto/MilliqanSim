@@ -1,6 +1,6 @@
 
 echo "Setting PYTHONPATH environment variable..."
-export PYTHONPATH=${PWD}/src:$PYTHONPATH
+export PYTHONPATH=${PWD}:${PYTHONPATH}
 
 echo "Checking for required modules..."
 

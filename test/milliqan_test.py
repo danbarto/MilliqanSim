@@ -31,11 +31,11 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import ROOT
-from Environment import Environment
-from Integrator import Integrator
-from Detector import *
-import Drawing
-from MilliTree import MilliTree
+from millisim.Environment import Environment
+from millisim.Integrator import Integrator
+from millisim.Detector import *
+import millisim.Drawing as Drawing
+from millisim.MilliTree import MilliTree
 import run_params as rp
 
 # do you want to VISualize, or collect STATS?
