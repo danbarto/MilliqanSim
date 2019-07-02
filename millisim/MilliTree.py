@@ -1,5 +1,4 @@
 import ROOT
-import Params
 import numpy as np
 
 class MilliTree:
@@ -66,13 +65,13 @@ class MilliTree:
         self.tree.Fill()
 
     # pass the output of Detector.FindIntersection to this, and it will populate the tree values
-    def SetValues(self, intersect, pInt):
-        self.Bfield = Params.BFieldType
-        self.MatSetup = Params.MatSetup
-        self.MSCtype = Params.MSCtype
-        self.EnergyLossOn = int(Params.EnergyLossOn)
-        self.q = Params.Q
-        self.m = Params.m
+    def SetValues(self, itg, intersect, pInt):
+        self.Bfield = itg.environ.bfield
+        self.MatSetup = itg.environ.mat_setup
+        self.MSCtype = itg.multiple_scatter
+        self.EnergyLossOn = itg.do_energy_loss
+        self.q = itg.Q
+        self.m = itg.m
         self.x = intersect[0]
         self.y = intersect[1]
         self.z = intersect[2]
