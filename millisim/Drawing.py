@@ -98,7 +98,7 @@ def DrawXZslice(trajs, colors=None, ax=None, fig=None, subplot=111, drawBFieldFr
         Z,X = np.meshgrid(z,x)
 
         mag = np.append(env.Bmag[::-1,:,0],env.Bmag[1:,:,180/env.DPHI],0)
-        bmplot = plt.pcolor(Z,X,mag,cmap='afmhot',vmax=5.0)
+        bmplot = plt.pcolor(Z,X,mag,cmap='afmhot', vmax = 4.0, vmin = 0.0)
         
         if drawColorbar:
             bmcb = plt.colorbar(bmplot)

@@ -97,7 +97,7 @@ pt_dist = rootfile.Get("pt")
 mt = MilliTree()
 
 # setup output file
-suffix = sys.argv[1]
+suffix = sys.argv[1] if len(sys.argv) > 1 else "test"
 try:
     os.makedirs("output_data")
 except:
