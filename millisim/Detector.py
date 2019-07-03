@@ -9,8 +9,8 @@ class PlaneDetector(object):
         self.dist_to_origin = float(dist_to_origin)
         self.eta = float(eta)
         self.phi = float(phi)
-        self.width = float(width)
-        self.height = float(height)
+        self.width = float(width) if width is not None else None
+        self.height = float(height) if height is not None else None
 
         if eta == float("inf"):
             theta = 0.0
@@ -28,7 +28,7 @@ class PlaneDetector(object):
         if np.isinf(eta):
             self.unit_v = np.array([0., 1., 0.])
         else:
-            self.unit_v = np.cross(self.norm, np.array([0., 0., 1.]))
+            self.unit_v = np.cross(np.array([0., 0., 1.]), self.norm)
         self.unit_v /= np.linalg.norm(self.unit_v)
         self.unit_w = np.cross(self.norm, self.unit_v)
         
