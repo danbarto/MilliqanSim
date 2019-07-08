@@ -1,35 +1,41 @@
+import Detector
 import numpy as np
 
-mode = "STATS"
-ntrajs = 1
-pt_spect_filename = "../p_eta_dist/combined_PtSpect_Eta0p16.root"
-dt = 0.1   #timestep in ns
-max_nsteps = 5000
-cutoff = 34.
+mode = "VIS"
+ntrajs = 200
+pt_spect_filename = "../p_eta_dist/TT_chargedParticles_pt_eta.root"
+dt = 0.2   #timestep in ns
+max_nsteps = 500
 use_var_dt = False
 BFieldType = "cms"
 
 particleQ = 1.0  # in electron charge units
-particleM = 105. # in MEV
-
-distToDetector = 33.
-eta = 0.16
-## don't touch
-theta = np.pi/2 - 2*np.arctan(np.exp(-eta))
-x = distToDetector*np.cos(theta)
-z = distToDetector*np.sin(theta)
-centerOfDetector = np.array([x, 0., z])
+particleM = 135. # in MEV
 ##
-RockBegins = distToDetector - 17.
+RockBegins = 99999.
 
-detWidth = 0.5
-detHeight = 0.5
+# cutoff = 3.1
+# cutoffaxis = 2
+# distToDetector = 2.99
+# centerOfDetector = np.array([0., 0., distToDetector])
+# detWidth = 1.5 * 2
+# detHeight = 1.5 * 2
+# detDepth = 1.0
+# etabounds = (1.2, 3.0)
+# ptCut = 0.2
+# useCustomIntersectionFunction = False
+
+cutoff = 1.20
+cutoffaxis = 4
+distToDetector = 1.16
+centerOfDetector = np.array([0., distToDetector, 0.])
+detWidth = 1.29*2
+detHeight = 6.0
 detDepth = 1.0
-
-etabounds = (eta-0.08, eta+0.08)
-ptCut = 17.
-phibounds = (0.00, 0.22)
+etabounds = (-1.4,1.4)
+ptCut = 0.70
+useCustomIntersectionFunction = True
+intersectFunction = Detector.FindRIntersection
 
 useCustomMaterialFunction = False
-useCustomIntersectionFunction = False
 useCustomOutput = False

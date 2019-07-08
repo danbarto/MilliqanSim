@@ -88,6 +88,9 @@ Params.m = rp.particleM
 Params.SuppressStoppedWarning = False
 Params.RockBegins = rp.RockBegins
 
+Params.solRad=1.29
+Params.solLength=4.86
+
 if rp.useCustomMaterialFunction:
     Params.matFunction = rp.matFunction
 
@@ -96,7 +99,7 @@ ROOT.gRandom.SetSeed(0)
 
 rootfile = ROOT.TFile(rp.pt_spect_filename)
 # this is a 1D pT distribution (taken from small-eta events)
-pt_dist = rootfile.Get("pt")
+pt_dist = rootfile.Get("h_pt_eta")
 
 dt = rp.dt
 nsteps = rp.max_nsteps    
@@ -105,7 +108,7 @@ center = rp.centerOfDetector
 distToDetect = np.linalg.norm(center)
 normToDetect = center/distToDetect
 
-detV = np.array([0., 1., 0.])
+detV = np.array([1.0, 0., 0.])
 detW = np.cross(normToDetect, detV)
 
 detWidth = rp.detWidth
@@ -119,6 +122,7 @@ detectorDict = {"norm":normToDetect, "dist":distToDetect, "v":detV,
 c1,c2,c3,c4 = Detector.getDetectorCorners(detectorDict)
 
 intersects = []
+intersects_all = []
 ntotaltrajs = 0
 
 mt = MilliTree()
@@ -151,32 +155,45 @@ starttime = time.time()
 
 # loop until we get ntrajs trajectories (VIS) or hits (STATS)
 while len(trajs)<ntrajs:
-    magp = ROOT.Double(-1)
+    pt = ROOT.Double(-1)
     eta = ROOT.Double(-1)
 
     etalow =  rp.etabounds[0]
     etahigh =  rp.etabounds[1]
 
-    # draw random pT values from the distribution. Set minimum at 10 GeV
-    while magp < rp.ptCut:
-        magp = pt_dist.GetRandom()
+    # draw random pT values from the distribution.
+    while pt < rp.ptCut or not etalow < eta < etahigh:
+        pt_dist.GetRandom2(pt, eta)
 
-    # eta distribution is uniform for small eta
-    eta = np.random.rand()*(etahigh-etalow) + etalow
+    if etalow < 0:
+        eta *= np.random.randint(2)*2 - 1
+
+    rnd = np.random.rand()
+    if rnd < 0.10:
+        # proton
+        Params.m = 938.3
+        pdgId = 2212
+    elif rnd < 0.20:
+        # kaon
+        Params.m = 493.7
+        pdgId = 321
+    else:
+        # pion
+        Params.m = 139.6
+        pdgId = 211
 
     th = 2*np.arctan(np.exp(-eta))
-    # magp = magp/np.sin(th)
-    phimin, phimax =  rp.phibounds
-    phi = np.random.rand() * (phimax-phimin) + phimin
+    magp = pt / np.sin(th)
+    # phi = np.random.rand() * 2*np.pi - np.pi
+    phi = np.random.rand() * 2*np.pi
     Params.Q *= np.random.randint(2)*2 - 1 
-    phi *= Params.Q/abs(Params.Q)
 
     # convert to cartesian momentum
     p = 1000*magp * np.array([np.sin(th)*np.cos(phi),np.sin(th)*np.sin(phi),np.cos(th)])
     x0 = np.array([0,0,0,p[0],p[1],p[2]])
     
-    # simulate until nsteps steps is reached, or the particle passes x=10
-    traj,tvec = Integrator.rk4(x0, dt, nsteps, cutoff=rp.cutoff, cutoffaxis=3, use_var_dt=rp.use_var_dt)
+    # simulate until nsteps steps is reached, or the particle passes z=3.1
+    traj,tvec = Integrator.rk4(x0, dt, nsteps, cutoff=rp.cutoff, cutoffaxis=rp.cutoffaxis, use_var_dt=rp.use_var_dt)
     ntotaltrajs += 1
     if mode=="VIS":
         trajs.append(traj)
@@ -188,6 +205,7 @@ while len(trajs)<ntrajs:
     if rp.useCustomIntersectionFunction:
         findIntersection = rp.intersectFunction
     intersection, t, theta, thW, thV, pInt = findIntersection(traj, tvec, detectorDict)
+    intersects_all.append(intersection)
     if intersection is not None:
         intersects.append(intersection)
         print len(trajs), ": p =",magp, ", eta =", eta, ", phi =", phi, ", eff =", float(len(intersects))/ntotaltrajs
@@ -202,7 +220,7 @@ while len(trajs)<ntrajs:
             v = np.dot(intersection, detectorDict['v'])
             magpint = np.linalg.norm(pInt)
             txtfile = open(outname,'a')
-            txtfile.write("{0:f}\t{1:f}\t{2:f}\t{3:f}\t{4:f}\t{5:f}\t{6:f}\t{7:f}\t{8:f}\t{9:f}\t{10:f}\t{11:f}\t{12:f}\n".format(t,Params.Q,Params.m,magp,magp*np.sin(th),eta,phi,theta,thW,thV,w,v,magpint))
+            txtfile.write("{0:5d} {1:8.1f} {2:5.1f} {3:10.4f} {4:8.4f} {5:8.4f} {6:10.4f} {7:10.4f} {8:10.4f} {9:10.4f} {10:10.4f} {11:10.4f}\n".format(pdgId,Params.m,Params.Q,magp*np.sin(th),eta,phi,intersection[0],intersection[1],intersection[2],pInt[0]/1000,pInt[1]/1000,pInt[2]/1000))
             txtfile.close()
             if rp.useCustomOutput:
                 txtfile = open(outnameCustom, 'a')
@@ -210,30 +228,42 @@ while len(trajs)<ntrajs:
                 txtfile.close()
             mt.SetValues(intersection, pInt)
             mt.Fill()
-
+            
 endtime = time.time()
 
 print "Efficiency:", float(len(intersects))/ntotaltrajs
 print "Total time: {0:.2f} sec".format(endtime-starttime)
 print "Time/Hit: {0:.2f} sec".format((endtime-starttime)/ntrajs)
 
-mt.Write("../output_{0}.root".format(suffix))
+# mt.Write("../output_{0}.root".format(suffix))
 
-fid = ROOT.TFile("../output_{0}.root".format(suffix), "UPDATE")
+# fid = ROOT.TFile("../output_{0}.root".format(suffix), "UPDATE")
 
-hhits = ROOT.TH1F("hhits","",1,0,2)
-hsims = ROOT.TH1F("hsims","",1,0,2)
-hhits.Fill(1, ntrajs)
-hsims.Fill(1, ntotaltrajs)
-hhits.Write()
-hsims.Write()
+# hhits = ROOT.TH1F("hhits","",1,0,2)
+# hsims = ROOT.TH1F("hsims","",1,0,2)
+# hhits.Fill(1, ntrajs)
+# hsims.Fill(1, ntotaltrajs)
+# hhits.Write()
+# hsims.Write()
 
-fid.Close()
+# fid.Close()
 
 if mode=="VIS" or visWithStats:
     plt.figure(num=1, figsize=(15,7))
 
     Drawing.Draw3Dtrajs(trajs, subplot=121)
+
+    fout = open("trajs.scad",'w')
+    for i,traj in enumerate(trajs):
+        fout.write("L{0} = {1};\n".format(i, traj.shape[1]))
+        fout.write("a{0} = {1};\n".format(i, str(traj[:3,:].T.tolist())))
+        if intersects_all[i] is None:
+            fout.write("intersect{0} = [0.0, 0.0, 0.0];\n".format(i))
+        else:
+            fout.write("intersect{0} = {1};\n".format(i, str(intersects_all[i].tolist())))
+        fout.write("pt{0} = {1};\n".format(i, np.linalg.norm(traj[3:5,0])/1000.0))
+        fout.write("iEvt{0} = {1};\n\n".format(i, i%3))
+    fout.close()
 
     Drawing.DrawLine(c1,c2,is3d=True)
     Drawing.DrawLine(c2,c3,is3d=True)
@@ -248,9 +278,9 @@ if mode=="VIS" or visWithStats:
     plt.figure(num=2)
     Drawing.DrawXZslice(trajs)
 
-    plt.figure(3)
-    rvals = np.linalg.norm(trajs[0][:3,:], axis=0)
-    pvals = np.linalg.norm(trajs[0][3:,:], axis=0)
-    plt.plot(rvals,pvals)
+    # plt.figure(3)
+    # rvals = np.linalg.norm(trajs[0][:3,:], axis=0)
+    # pvals = np.linalg.norm(trajs[0][3:,:], axis=0)
+    # plt.plot(rvals,pvals)
 
     plt.show()
