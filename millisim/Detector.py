@@ -258,8 +258,16 @@ class MilliqanDetector(object):
 
             last_isin = isin
 
-        return points if len(points) > 0 else None
+        return points
 
+    def hits_straight_line(self, isects):
+        layer_hits = np.zeros((self.nlayers,self.nrows,self.ncols))
+        for isect in isects:
+            layer_hits[isect[0][0],isect[0][1],isect[0][2]] = 1
+        nlayers = np.sum(layer_hits, axis=0)
+        if np.amax(nlayers) == self.nlayers:
+            return True
+        return False
 
     @property
     def nrows(self):

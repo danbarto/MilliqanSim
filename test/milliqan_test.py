@@ -252,8 +252,6 @@ if mode=="VIS" or visWithStats:
 
     hit_boxes = set()
     for i,isects in enumerate(bar_intersects):
-        if isects is None:
-            continue
         for isect in isects:
             hit_boxes.add(isect[0])
             c = colors[i % len(colors)]
