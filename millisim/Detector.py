@@ -285,7 +285,7 @@ class MilliqanDetector(object):
     def find_entries_exits(self, traj, assume_straight_line=True):
         # returns a list of tuples
         #  ((layer,row,col), entry_point, exit_point)
-        # None if no intersections
+        # empty list if no intersections
         # if assume_straight_line==True, this assumes that the trajectory is perfectly straight
         # once past R = self.face.dist_to_origin, and can use a faster algorithm
 
