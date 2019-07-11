@@ -7,7 +7,8 @@ basic multiple scattering and Bethe-Bloch energy loss, and generate statistics o
 with an exernal plane (e.g., the Milliqan detector).
 
 <p align="center">
-<img src="./bfield/bfield_with_trajs.png" alt="cross section of CMS b field" width="600"/>
+<img src="./images/bfield_with_trajs.png" alt="cross section of CMS b field" width="400"/>
+  <img src="./images/detector_hit.png" alt="example mCP hit on detector" width="400"/>
 </p>
 
 *Note on units and coordinates: throughout the software, units used are meters for distance, MeV for mass/momentum/energy, nanoseconds
