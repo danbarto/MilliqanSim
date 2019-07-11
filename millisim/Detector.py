@@ -97,6 +97,55 @@ class PlaneDetector(object):
 
         return None
 
+class Box(object):
+    def __init__(self, center, norm1, norm2, width, height, depth):
+        # width corresponds to direction norm1
+        # height corresponds to direction norm2
+        # depth corresponds to direction norm1 x norm2
+
+        if abs(np.dot(norm1, norm2)) > 1e-6:
+            raise Exception("norm1 and norm2 must be perpendicular!")
+
+        self.center = center
+        self.unit_u = norm1 / np.linalg.norm(norm1)
+        self.unit_v = norm2 / np.linalg.norm(norm2)
+        self.unit_w = np.cross(self.unit_u, self.unit_v)
+
+        self.width = width
+        self.height = height
+        self.depth = depth
+
+    def get_line_segments(self):
+        c1 = self.center - self.depth/2 * self.unit_w - self.width/2 * self.unit_u - self.height/2 * self.unit_v
+        c2 = self.center - self.depth/2 * self.unit_w - self.width/2 * self.unit_u + self.height/2 * self.unit_v
+        c3 = self.center - self.depth/2 * self.unit_w + self.width/2 * self.unit_u + self.height/2 * self.unit_v
+        c4 = self.center - self.depth/2 * self.unit_w + self.width/2 * self.unit_u - self.height/2 * self.unit_v
+        c5 = self.center + self.depth/2 * self.unit_w - self.width/2 * self.unit_u - self.height/2 * self.unit_v
+        c6 = self.center + self.depth/2 * self.unit_w - self.width/2 * self.unit_u + self.height/2 * self.unit_v
+        c7 = self.center + self.depth/2 * self.unit_w + self.width/2 * self.unit_u + self.height/2 * self.unit_v
+        c8 = self.center + self.depth/2 * self.unit_w + self.width/2 * self.unit_u - self.height/2 * self.unit_v
+
+        return [
+            (c1, c2),
+            (c2, c3),
+            (c3, c4),
+            (c4, c1),
+            (c1, c5),
+            (c2, c6),
+            (c3, c7),
+            (c4, c8),
+            (c5, c6),
+            (c6, c7),
+            (c7, c8),
+            (c8, c5),
+            ]
+
+    def draw(self, ax, **kwargs):
+        if "color" not in kwargs and "linecolor" not in kwargs:
+            kwargs["color"] = 'k'
+        for p1, p2 in self.get_line_segments():
+            ax.plot(xs=[p1[0],p2[0]], ys=[p1[1],p2[1]], zs=[p1[2],p2[2]], **kwargs)
+
 # this finds intersection with a spherical shell
 # if needed, can implement a SphereDetector class later
 

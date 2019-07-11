@@ -87,6 +87,8 @@ det = PlaneDetector(
     height = rp.detHeight,
 )
 
+box = Box(det.center, det.unit_v, det.unit_w, 1.0, 1.0, 5.0)
+
 # make sure numbers are new each run
 ROOT.gRandom.SetSeed(0)
 
@@ -212,9 +214,7 @@ fid.Close()
 
 if mode=="VIS" or visWithStats:
     plt.figure(num=1, figsize=(15,7))
-
-    Drawing.Draw3Dtrajs(trajs, subplot=121)
-
+    Drawing.Draw3Dtrajs(trajs, subplot=121)    
 
     # the four corners
     c1,c2,c3,c4 = det.GetCorners()
@@ -223,18 +223,23 @@ if mode=="VIS" or visWithStats:
     Drawing.DrawLine(c3,c4,is3d=True)
     Drawing.DrawLine(c4,c1,is3d=True)
 
+    box.draw(plt.gca())
+    plt.gca().set_xlim(det.center[0]-8, det.center[0]+8)
+    plt.gca().set_ylim(det.center[1]-8, det.center[1]+8)
+    plt.gca().set_zlim(det.center[2]-8, det.center[2]+8)
+
     for i in range(len(intersects)):
         Drawing.DrawLine(intersects[i],intersects[i],is3d=True,linestyle='None',marker='o',color='r')
 
     Drawing.DrawXYslice(trajs, subplot=122)
 
-    plt.figure(num=2, figsize=(11.7,7))
-    Drawing.DrawXZslice(trajs, drawBFieldFromEnviron=env, drawColorbar=True)
+    # plt.figure(num=2, figsize=(11.7,7))
+    # Drawing.DrawXZslice(trajs, drawBFieldFromEnviron=env, drawColorbar=True)
 
-    plt.figure(3)
-    for traj in trajs:
-        rvals = np.linalg.norm(traj[:3,:], axis=0)
-        pvals = np.linalg.norm(traj[3:,:], axis=0)
-        plt.plot(rvals,pvals)
+    # plt.figure(3)
+    # for traj in trajs:
+    #     rvals = np.linalg.norm(traj[:3,:], axis=0)
+    #     pvals = np.linalg.norm(traj[3:,:], axis=0)
+    #     plt.plot(rvals,pvals)
 
     plt.show()

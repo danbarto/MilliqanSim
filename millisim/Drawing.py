@@ -48,6 +48,10 @@ def Draw3Dtrajs(trajs, colors=None, ax = None, fig=None, subplot=111):
     ax.set_ylim((-9,9))
     ax.set_zlim((-15,15))
 
+    # ax.set_xlim((29.6,35.6))
+    # ax.set_ylim((-3,3))
+    # ax.set_zlim((2.2,8.2))
+
 
 
 def DrawXYslice(trajs, colors=None, ax=None, fig=None, subplot=111):
