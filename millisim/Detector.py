@@ -36,7 +36,7 @@ class PlaneDetector(object):
         
 
     # get the four corners, for drawing purposes
-    def GetCorners(self):
+    def get_corners(self):
         if self.width is None or self.height is None:
             raise Exception("Can't get corners of an infinite detector!")
 
@@ -47,7 +47,7 @@ class PlaneDetector(object):
         
         return c1,c2,c3,c4
 
-    def FindIntersection(self, traj, tvec=None):
+    def find_intersection(self, traj, tvec=None):
         # find the intersection with a plane with normal norm
         # and distance to origin dist. returns None if no intersection
 
@@ -146,19 +146,73 @@ class Box(object):
     def draw(self, ax, **kwargs):
         if "color" not in kwargs and "c" not in kwargs:
             kwargs["color"] = 'k'
+        # NOTE: y and z axes flipped, for consistency with Drawing module (see Drawing.Draw3Dtrajs)
         for p1, p2 in self.get_line_segments():
-            ax.plot(xs=[p1[0],p2[0]], ys=[p1[1],p2[1]], zs=[p1[2],p2[2]], **kwargs)
+            ax.plot(xs=[p1[0],p2[0]], ys=[p1[2],p2[2]], zs=[p1[1],p2[1]], **kwargs)
 
+    def transform_to_boxcoords(self, inp):
+        # inp is either a length-3 1D array, or and (n x 3) 2D array, where each row is a vector to be transformed        
+        inp = np.array(inp)
+        inp_shape = inp.shape
+        inp = np.reshape(inp, (-1,3))    
+        inp -= np.tile(self.center, inp.shape[0]).reshape(inp.shape[0],3)
+        cob = np.array([self.unit_u, self.unit_v, self.unit_w])
+        xform = np.dot(cob, inp.T).T
+        return np.reshape(xform, inp_shape)
+
+    def transform_from_boxcoords(self, inp):
+        # inp is either a length-3 1D array, or and (n x 3) 2D array, where each row is a vector to be transformed        
+        inp = np.array(inp)
+        inp_shape = inp.shape
+        inp = np.reshape(inp, (-1,3))    
+        cob = np.array([self.unit_u, self.unit_v, self.unit_w]).T
+        xform = np.dot(cob, inp.T).T
+        xform += np.tile(self.center, inp.shape[0]).reshape(inp.shape[0],3)
+        return np.reshape(xform, inp_shape)
+        
     def contains(self,p):
-        rel = p - self.center
-        if not -self.width/2 < np.dot(rel, self.unit_u) < self.width/2:
+        xf = self.transform_to_boxcoords(p)
+        if not -self.width/2 < xf[0] < self.width/2:
             return False
-        if not -self.height/2 < np.dot(rel, self.unit_v) < self.height/2:
+        if not -self.height/2 < xf[1] < self.height/2:
             return False
-        if not -self.depth/2 < np.dot(rel, self.unit_w) < self.depth/2:
+        if not -self.depth/2 < xf[2] < self.depth/2:
             return False
         return True
 
+    def find_intersections(self, p1, p2):
+        # finds intersections of the line segment from p1 to p2 with the box faces (either 0 or 2)
+        xf = self.transform_to_boxcoords([p1,p2])
+        p1 = xf[0,:]
+        p2 = xf[1,:]
+
+        tbounds = np.zeros((3,2))
+        dims = [self.width/2, self.height/2, self.depth/2]
+        for i in range(3):
+            if p1[i] == p2[i]:
+                tbounds[i,:] = [np.inf, np.inf]
+            else:
+                t1 = (-dims[i] - p1[i]) / (p2[i] - p1[i])
+                t2 = (dims[i] - p1[i]) / (p2[i] - p1[i])
+                tbounds[i,:] = [min(t1,t2),max(t1,t2)]
+                
+        tmin = np.amax(tbounds[:,0])
+        tmax = np.amin(tbounds[:,1])
+
+        if tmin >= tmax:
+            return []
+
+        pmin = p1 + tmin*(p2-p1)
+        pmax = p1 + tmax*(p2-p1)
+
+        ixf = self.transform_from_boxcoords([pmin,pmax])
+
+        ret = []
+        if 0 <= tmin <= 1:
+            ret.append(ixf[0,:])
+        if 0 <= tmax <= 1:
+            ret.append(ixf[1,:])
+        return ret
 
 class MilliqanDetector(object):
     def __init__(self, dist_to_origin, eta, phi, 
@@ -186,6 +240,13 @@ class MilliqanDetector(object):
         self.total_length = self.nlayers*self.bar_length + (self.nlayers-1)*self.layer_gap
         self.containing_box = Box(self.center_3d, self.face.unit_w, self.face.unit_v, 
                                   width, height, self.total_length)
+
+        self.layer_boxes = []
+        for ilayer in range(self.nlayers):
+            self.layer_boxes.append(Box(
+                self.face.center + ((ilayer+0.5)*bar_length + ilayer*layer_gap) * self.face.norm,
+                self.face.unit_w, self.face.unit_v, width, height, self.bar_length
+            ))
 
         # bars is an (nlayers x nrows x ncols) array of Box objects
         # counting from near layer to far, top row to bottom, left col to right
@@ -221,18 +282,43 @@ class MilliqanDetector(object):
             kwargs['c'] = 'r'
             self.containing_box.draw(ax, **kwargs)
 
-    def FindEntriesExits(self, traj):
+    def find_entries_exits(self, traj, assume_straight_line=True):
         # returns a list of tuples
         #  ((layer,row,col), entry_point, exit_point)
         # None if no intersections
+        # if assume_straight_line==True, this assumes that the trajectory is perfectly straight
+        # once past R = self.face.dist_to_origin, and can use a faster algorithm
 
         npoints = traj.shape[1]
         dists = np.sum(np.tile(self.face.norm, npoints).reshape(npoints,3).T * traj[:3,:], axis=0)
         start_idx = np.argmax(dists > self.face.dist_to_origin)
         end_idx = np.argmax(dists > self.face.dist_to_origin + self.nlayers*self.bar_length + (self.nlayers-1)*self.layer_gap)
 
-        points = []
+        if assume_straight_line:
+            p1 = traj[:3,start_idx-1]
+            p2 = traj[:3,end_idx]
+        
+            # first check overall containing box. If no intersects, can skip
+            if len(self.containing_box.find_intersections(p1, p2)) == 0:
+                return []
 
+            points = []
+            for ilayer in range(self.nlayers):
+                if len(self.layer_boxes[ilayer].find_intersections(p1, p2)) == 0:
+                    continue
+                for irow in range(self.nrows):
+                    for icol in range(self.ncols):
+                        isects = self.bars[ilayer][irow][icol].find_intersections(p1,p2)
+                        if len(isects)==0:
+                            continue
+                        i1 = isects[0]
+                        i2 = isects[1] if len(isects)>1 else None
+                        points.append(((ilayer,irow,icol),i1,i2))
+
+            return points
+
+        # if we're not assuming straight line, step through the trajectory point by point
+        points = []
         last_isin = None
         for i in range(start_idx, end_idx+1):
             d = dists[i]
@@ -251,19 +337,21 @@ class MilliqanDetector(object):
 
             if isin != last_isin:
                 if last_isin is not None:
-                    exit_point = traj[:3,i-1]
+                    exit_point = self.bars[last_isin[0]][last_isin[1]][last_isin[2]].find_intersections(traj[:3,i-1],traj[:3,i])[0]
                     points.append((last_isin, entry_point, exit_point))
                 if isin is not None:
-                    entry_point = traj[:3,i]
+                    entry_point = self.bars[isin[0]][isin[1]][isin[2]].find_intersections(traj[:3,i-1],traj[:3,i])[0]
 
             last_isin = isin
 
         return points
 
     def hits_straight_line(self, isects):
+        # takes list of isects from find_entries_exits, and tests whether the same
+        # (row,col) is hit in every layer
         layer_hits = np.zeros((self.nlayers,self.nrows,self.ncols))
         for isect in isects:
-            layer_hits[isect[0][0],isect[0][1],isect[0][2]] = 1
+            layer_hits[isect[0]] = 1
         nlayers = np.sum(layer_hits, axis=0)
         if np.amax(nlayers) == self.nlayers:
             return True
@@ -318,30 +406,4 @@ class MilliqanDetector(object):
     def layer_gap(self, _):
         print "Can't change layer_gap after initialization"
 
-# this finds intersection with a spherical shell
-# if needed, can implement a SphereDetector class later
-
-# def FindRIntersection(traj, tvec, detectorDict):
-#     # find the intersection with a plane with normal norm
-#     # and distance to origin dist. returns None if no intersection
-
-#     dist = detectorDict["dist"]
-
-#     for i in range(traj.shape[1]-1):
-#         p1 = traj[:3,i]
-#         p2 = traj[:3,i+1]
-        
-#         r2 = np.linalg.norm(p2[:2])
-
-#         if r2>=dist:
-#             r1 = np.linalg.norm(p1[:2])
-#             intersect = p1+(dist-r1)/(r2-r1)*(p2-p1)
-#             t = tvec[i] + (dist-r1)/(r2-r1) * (tvec[i+1] - tvec[i])
-#             pInt = traj[3:,i] + (dist-r1)/(r2-r1) * traj[3:,i+1]
-
-#             return intersect,t,None,None,None,pInt
-
-#             break
-
-#     return None, None, None, None, None, None
 

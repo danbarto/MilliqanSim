@@ -16,8 +16,8 @@ distToDetector = 33.
 eta = 0.16
 rock_begins = distToDetector - 17.
 
-detWidth = 5.5
-detHeight = 5.5
+detWidth = 5.0
+detHeight = 5.0
 detDepth = 1.0
 
 etabounds = (eta-0.08, eta+0.08)

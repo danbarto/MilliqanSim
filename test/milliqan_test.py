@@ -61,7 +61,7 @@ env = Environment(
     bfield = rp.bfield_type,
     bfield_file = "../bfield/bfield_coarse.pkl",
     rock_begins = rp.rock_begins,
-    rock_ends = rp.distToDetector,
+    rock_ends = rp.distToDetector-0.10,
     mat_function = rp.matFunction if rp.useCustomMaterialFunction else None
 )
 
@@ -98,13 +98,15 @@ mdet = MilliqanDetector(
     bar_width = 1.0,
     bar_height = 1.0,
     bar_length = 2.0, 
-    bar_gap = 0.50,
-    layer_gap = 1.0,
+    bar_gap = 0.5,
+    layer_gap = 0.4,
 )
 
 
 # make sure numbers are new each run
-ROOT.gRandom.SetSeed(0)
+seed = 0
+ROOT.gRandom.SetSeed(seed)
+np.random.seed(seed)
 
 rootfile = ROOT.TFile(rp.pt_spect_filename)
 # this is a 1D pT distribution (taken from small-eta events)
@@ -184,8 +186,8 @@ while len(trajs)<ntrajs:
         trajs.append(traj)
 
     # compute the intersection. Will return None if no intersection
-    idict = det.FindIntersection(traj, tvec)
-    bar_intersects.append(mdet.FindEntriesExits(traj))
+    idict = det.find_intersection(traj, tvec)
+    bar_intersects.append(mdet.find_entries_exits(traj, assume_straight_line=True))
     if idict is not None:
         intersects.append((len(trajs)-1,idict["x_int"]))
         print len(trajs), ": p =",magp, ", eta =", eta, ", phi =", phi, ", eff =", float(len(intersects))/ntotaltrajs
@@ -232,17 +234,17 @@ if mode=="VIS" or visWithStats:
     plt.figure(num=1, figsize=(15,7))
     Drawing.Draw3Dtrajs(trajs, subplot=121)    
 
-    # # the four corners
-    # c1,c2,c3,c4 = det.GetCorners()
-    # Drawing.DrawLine(c1,c2,is3d=True, c='k')
-    # Drawing.DrawLine(c2,c3,is3d=True, c='k')
-    # Drawing.DrawLine(c3,c4,is3d=True, c='k')
-    # Drawing.DrawLine(c4,c1,is3d=True, c='k')
+    # the four corners
+    c1,c2,c3,c4 = det.get_corners()
+    Drawing.DrawLine(c1,c2,is3d=True, c='k')
+    Drawing.DrawLine(c2,c3,is3d=True, c='k')
+    Drawing.DrawLine(c3,c4,is3d=True, c='k')
+    Drawing.DrawLine(c4,c1,is3d=True, c='k')
 
-    mdet.draw(plt.gca(), c='0.75', draw_containing_box=False)
+    mdet.draw(plt.gca(), c='0.65', draw_containing_box=False)
     plt.gca().set_xlim(mdet.center_3d[0]-8, mdet.center_3d[0]+8)
-    plt.gca().set_ylim(mdet.center_3d[1]-8, mdet.center_3d[1]+8)
-    plt.gca().set_zlim(mdet.center_3d[2]-8, mdet.center_3d[2]+8)
+    plt.gca().set_ylim(mdet.center_3d[2]-8, mdet.center_3d[2]+8)
+    plt.gca().set_zlim(mdet.center_3d[1]-8, mdet.center_3d[1]+8)
 
     colors = ['r','g','b','c','m','y']
 
@@ -263,13 +265,13 @@ if mode=="VIS" or visWithStats:
 
     Drawing.DrawXYslice(trajs, subplot=122)
 
-    # plt.figure(num=2, figsize=(11.7,7))
-    # Drawing.DrawXZslice(trajs, drawBFieldFromEnviron=env, drawColorbar=True)
+    plt.figure(num=2, figsize=(11.7,7))
+    Drawing.DrawXZslice(trajs, drawBFieldFromEnviron=env, drawColorbar=True)
 
-    # plt.figure(3)
-    # for traj in trajs:
-    #     rvals = np.linalg.norm(traj[:3,:], axis=0)
-    #     pvals = np.linalg.norm(traj[3:,:], axis=0)
-    #     plt.plot(rvals,pvals)
+    plt.figure(3)
+    for traj in trajs:
+        rvals = np.linalg.norm(traj[:3,:], axis=0)
+        pvals = np.linalg.norm(traj[3:,:], axis=0)
+        plt.plot(rvals,pvals)
 
     plt.show()

@@ -27,31 +27,27 @@ def Draw3Dtrajs(trajs, colors=None, ax = None, fig=None, subplot=111):
 
     nc = len(colors)
         
+    # NOTE: y and z axes are all inverted here fo display purposes
     for i in range(len(trajs)):
-        ax.plot3D(xs=trajs[i][0,:], ys=trajs[i][1,:], zs=trajs[i][2,:], color=colors[i%nc])
+        ax.plot3D(xs=trajs[i][0,:], ys=trajs[i][2,:], zs=trajs[i][1,:], color=colors[i%nc])
 
     sr, sl = Environment.CMS_RADIUS, Environment.CMS_LENGTH
     t = np.linspace(0, 2*np.pi, 100)
-    ax.plot(xs=sr*np.cos(t), ys=sr*np.sin(t), zs=sl/2, color='k')
-    ax.plot(xs=sr*np.cos(t), ys=sr*np.sin(t), zs=-sl/2, color='k')
+    ax.plot(xs=sr*np.cos(t), ys=sl/2*np.ones(t.size), zs=sr*np.sin(t), color='k')
+    ax.plot(xs=sr*np.cos(t), ys=-sl/2*np.ones(t.size), zs=sr*np.sin(t), color='k')
     for i in range(8):
         th = i * 2*np.pi/8
         x = sr*np.cos(th)
         y = sr*np.sin(th)
-        ax.plot(xs=[x,x], ys=[y,y], zs=[-sl/2, sl/2], color='k')
+        ax.plot(xs=[x,x], ys=[-sl/2,sl/2], zs=[y,y], color='k')
 
     ax.set_xlabel('x (m)')
-    ax.set_ylabel('y (m)')
-    ax.set_zlabel('z (m)')
+    ax.set_ylabel('z (m)')
+    ax.set_zlabel('y (m)')
 
     ax.set_xlim((-9,9))
-    ax.set_ylim((-9,9))
-    ax.set_zlim((-15,15))
-
-    # ax.set_xlim((29.6,35.6))
-    # ax.set_ylim((-3,3))
-    # ax.set_zlim((2.2,8.2))
-
+    ax.set_ylim((-15,15))
+    ax.set_zlim((-9,9))
 
 
 def DrawXYslice(trajs, colors=None, ax=None, fig=None, subplot=111):
@@ -125,7 +121,8 @@ def DrawLine(p1, p2, ax=None, is3d=False, **kwargs):
         ax = plt.gca()
 
     if is3d:
-        ax.plot(xs=[p1[0],p2[0]],ys=[p1[1],p2[1]],zs=[p1[2],p2[2]], **kwargs)
+        # invert y and z for display purposes (see Draw3Dtrajs function)
+        ax.plot(xs=[p1[0],p2[0]],ys=[p1[2],p2[2]],zs=[p1[1],p2[1]], **kwargs)
     else:
         ax.plot([p1[0],p2[0]],[p1[1],p2[1]], **kwargs)
     
