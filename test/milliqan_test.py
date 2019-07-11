@@ -239,7 +239,7 @@ if mode=="VIS" or visWithStats:
     # Drawing.DrawLine(c3,c4,is3d=True, c='k')
     # Drawing.DrawLine(c4,c1,is3d=True, c='k')
 
-    mdet.draw(plt.gca(), c='0.75')
+    mdet.draw(plt.gca(), c='0.75', draw_containing_box=False)
     plt.gca().set_xlim(mdet.center_3d[0]-8, mdet.center_3d[0]+8)
     plt.gca().set_ylim(mdet.center_3d[1]-8, mdet.center_3d[1]+8)
     plt.gca().set_zlim(mdet.center_3d[2]-8, mdet.center_3d[2]+8)

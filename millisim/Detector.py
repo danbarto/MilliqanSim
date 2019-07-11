@@ -183,6 +183,10 @@ class MilliqanDetector(object):
         self.center_3d = self.face.center + \
                          ((mid_layer+0.5)*bar_length + mid_layer*layer_gap) * self.face.norm
 
+        self.total_length = self.nlayers*self.bar_length + (self.nlayers-1)*self.layer_gap
+        self.containing_box = Box(self.center_3d, self.face.unit_w, self.face.unit_v, 
+                                  width, height, self.total_length)
+
         # bars is an (nlayers x nrows x ncols) array of Box objects
         # counting from near layer to far, top row to bottom, left col to right
         self.bars = []
@@ -208,12 +212,14 @@ class MilliqanDetector(object):
                         depth = bar_length
                     ))
 
-    def draw(self, ax, **kwargs):
+    def draw(self, ax, draw_containing_box=False, **kwargs):
         for ilayer in range(self.nlayers):
             for irow in range(self.nrows):
                 for icol in range(self.ncols):
                     self.bars[ilayer][irow][icol].draw(ax, **kwargs)
-
+        if draw_containing_box:
+            kwargs['c'] = 'r'
+            self.containing_box.draw(ax, **kwargs)
 
     def FindEntriesExits(self, traj):
         # returns a list of tuples
@@ -231,6 +237,8 @@ class MilliqanDetector(object):
         for i in range(start_idx, end_idx+1):
             d = dists[i]
             ilayer = int(np.floor((d-self.face.dist_to_origin)/(self.bar_length+self.layer_gap)))
+            if not self.containing_box.contains(traj[:3,i]):
+                ilayer = -1
             isin = None
             if 0 <= ilayer < self.nlayers:
                 for irow in range(self.nrows):
@@ -245,7 +253,7 @@ class MilliqanDetector(object):
                 if last_isin is not None:
                     exit_point = traj[:3,i-1]
                     points.append((last_isin, entry_point, exit_point))
-                if isin is not None
+                if isin is not None:
                     entry_point = traj[:3,i]
 
             last_isin = isin
