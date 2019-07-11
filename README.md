@@ -38,13 +38,12 @@ Examples of their use are in `test/functionality_tests.py`.
 1. **Environment.py** - implements an `Environment` class that stores b-field/material configuration. Also contains constants defining material properties.
 2. **Integrator.py** -  implements an `Integrator` class that controls the propagation of particles through a given `Environment`
 3. **Detector.py** - contains classes implementing "Detectors". These take a trajectory as input and return information about the interaction of the particle 
-with the detector. E.g., the location and direction of a particle upon intersection with a detector face. Currently only one, `PlaneDetector`, is officially implemented,
-but more advanced functionality is possible.
+with the detector. E.g., the location and direction of a particle upon intersection with a detector face. There is a simple `PlaneDetector`, which simply detects intersections of trajectories with a rectangle, and a more complicated `MilliqanDetector` that implements a full 3D bars layout, and can determine which bars a given trajectory hits.
 4. **MatterInteractions.py** - methods implementing multiple scattering and Bethe-Bloch energy loss (used internally, probably don't need to touch in user script)
 5. **Drawing.py** - various methods to make plots of trajectories
 
 The `test` directory contains a few well-commented example scripts that should give a good idea of how to use the program. In addition
-to the test scripts mentioned above, `milliqan_test.py` is a program to simulate particle hits (muons or mCPs) on a pseudo Milliqan detector.
+to the test scripts mentioned above, `milliqan_test.py` is a program to simulate particle hits (muons or mCPs) on a pseudo Milliqan detector (enlarged for demonstration purposes). This also shows how to retrieve information on the intersection of a trajectory with the Milliqan bars.
 
 The `bfield` directory contains the pickled-version of the CMS magnetic field map. This is loaded into memory at the start
 of the simulation. There is also a script to make a 2D plot of the field.
@@ -88,9 +87,17 @@ You can also define a `Detector` object that will take a computed trajectory and
 one implemented is `PlaneDetector`, which is a rectangular plane with normal vector pointing at the origin.
 
 **PlaneDetector** parameters:
-1. `dist_to_origin`: the distance from the face of the detector to the origin.
-2. `eta, phi`: the eta/phi of the center of detector face.
-3. `width, height`: the dimensions of rectagular. If either or both are `None`, that dimension is infinite.
+1. `dist_to_origin`: the distance from the face of the detector to the origin
+2. `eta, phi`: the eta/phi of the center of detector face
+3. `width, height`: the dimensions of rectagular. If either or both are `None`, that dimension is infinite
+
+**MilliqanDetector** parameters:
+1. `dist_to_origin`: the distance from the center of the near face of the detector to the origin
+2. `eta, phi`: the eta/phi of the center of detector face
+3. `nrows, ncols`: number of rows/cols of bars in each layer
+4. `bar_width, bar_height, bar_length`: dimensions of bars
+5. `bar_gap`: gap between bars within a single layer
+6. `layer_gap`: gap between layers
 
 Once you've defined everything, you can call the `Integrator.propagate` method to compute a particle trajectory. This implements a Runge-Kutta integrator
 that will propagate a particle through the magnetic field, and simulates multiple scattering/energy loss if these are turned on.
@@ -101,5 +108,5 @@ This is used to update the 6-element x vector. The change in position/momentum a
 
 The return value of `Integrator.propagate` is a 6-by-(nsteps+1) array. Each column contains `[x,y,z,px,py,pz]` at a specific timestep.
 
-The `PlaneDetector.FindIntersection` method takes the trajectory array defined above and computes statistics on the intersection with
-an external plane. It returns a dictionary of useful values. See `millisim/Detector.py` and `test/milliqan_test.py` for details.
+The `PlaneDetector.find_intersection` method takes the trajectory array defined above and computes statistics on the intersection with
+an external plane, and returns a dictionary of useful values. `MilliqanDetector.find_entries_exits` returns the entry and exit points of a given trajectory for each bar it passes through. See `millisim/Detector.py` and `test/milliqan_test.py` for details.
