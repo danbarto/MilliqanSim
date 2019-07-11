@@ -5,7 +5,7 @@ ntrajs = 10
 pt_spect_filename = "../p_eta_dist/combined_PtSpect_Eta0p16.root"
 dt = 0.1   #timestep in ns
 max_nsteps = 5000
-cutoff = 34.
+cutoff = 42.
 use_var_dt = False
 bfield_type = "cms"
 

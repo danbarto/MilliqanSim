@@ -53,7 +53,7 @@ class Environment(object):
     DPHIf = 5
 
     def __init__(self, mat_setup=None, bfield=None, bfield_file=None, mat_function=None,
-                 use_fine_bfield=False, interpolate_b=True, rock_begins=999999.):
+                 use_fine_bfield=False, interpolate_b=True, rock_begins=999999., rock_ends=999999.):
 
         self.BFieldLoaded = False
 
@@ -61,6 +61,7 @@ class Environment(object):
         self.__mat_function = mat_function
         self.bfield = bfield
         self.rock_begins = rock_begins
+        self.rock_ends = rock_ends
         self.use_fine_bfield = use_fine_bfield
         self.interpolate_b = interpolate_b
 
@@ -172,7 +173,7 @@ class Environment(object):
             r = np.sqrt(x**2+y**2)
             R = np.sqrt(r**2+z**2)
 
-            if R > self.rock_begins:
+            if self.rock_begins < R < self.rock_ends:
                 return 'rock'
 
             if not withinLength:

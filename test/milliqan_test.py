@@ -61,6 +61,7 @@ env = Environment(
     bfield = rp.bfield_type,
     bfield_file = "../bfield/bfield_coarse.pkl",
     rock_begins = rp.rock_begins,
+    rock_ends = rp.distToDetector,
     mat_function = rp.matFunction if rp.useCustomMaterialFunction else None
 )
 
@@ -87,7 +88,20 @@ det = PlaneDetector(
     height = rp.detHeight,
 )
 
-box = Box(det.center, det.unit_v, det.unit_w, 1.0, 1.0, 5.0)
+mdet = MilliqanDetector(
+    dist_to_origin = rp.distToDetector,
+    eta = rp.eta,
+    phi = 0.0,
+    nrows = 3,
+    ncols = 2,
+    nlayers = 3,
+    bar_width = 1.0,
+    bar_height = 1.0,
+    bar_length = 2.0, 
+    bar_gap = 0.50,
+    layer_gap = 1.0,
+)
+
 
 # make sure numbers are new each run
 ROOT.gRandom.SetSeed(0)
@@ -134,6 +148,7 @@ if mode=="STATS":
 starttime = time.time()
 
 intersects = []
+bar_intersects = []
 ntotaltrajs = 0
 
 # loop until we get ntrajs trajectories (VIS) or hits (STATS)
@@ -170,8 +185,9 @@ while len(trajs)<ntrajs:
 
     # compute the intersection. Will return None if no intersection
     idict = det.FindIntersection(traj, tvec)
+    bar_intersects.append(mdet.FindEntriesExits(traj))
     if idict is not None:
-        intersects.append(idict["x_int"])
+        intersects.append((len(trajs)-1,idict["x_int"]))
         print len(trajs), ": p =",magp, ", eta =", eta, ", phi =", phi, ", eff =", float(len(intersects))/ntotaltrajs
         if mode=="VIS":
             pass
@@ -216,20 +232,36 @@ if mode=="VIS" or visWithStats:
     plt.figure(num=1, figsize=(15,7))
     Drawing.Draw3Dtrajs(trajs, subplot=121)    
 
-    # the four corners
-    c1,c2,c3,c4 = det.GetCorners()
-    Drawing.DrawLine(c1,c2,is3d=True)
-    Drawing.DrawLine(c2,c3,is3d=True)
-    Drawing.DrawLine(c3,c4,is3d=True)
-    Drawing.DrawLine(c4,c1,is3d=True)
+    # # the four corners
+    # c1,c2,c3,c4 = det.GetCorners()
+    # Drawing.DrawLine(c1,c2,is3d=True, c='k')
+    # Drawing.DrawLine(c2,c3,is3d=True, c='k')
+    # Drawing.DrawLine(c3,c4,is3d=True, c='k')
+    # Drawing.DrawLine(c4,c1,is3d=True, c='k')
 
-    box.draw(plt.gca())
-    plt.gca().set_xlim(det.center[0]-8, det.center[0]+8)
-    plt.gca().set_ylim(det.center[1]-8, det.center[1]+8)
-    plt.gca().set_zlim(det.center[2]-8, det.center[2]+8)
+    mdet.draw(plt.gca(), c='0.75')
+    plt.gca().set_xlim(mdet.center_3d[0]-8, mdet.center_3d[0]+8)
+    plt.gca().set_ylim(mdet.center_3d[1]-8, mdet.center_3d[1]+8)
+    plt.gca().set_zlim(mdet.center_3d[2]-8, mdet.center_3d[2]+8)
 
-    for i in range(len(intersects)):
-        Drawing.DrawLine(intersects[i],intersects[i],is3d=True,linestyle='None',marker='o',color='r')
+    colors = ['r','g','b','c','m','y']
+
+    # for i in range(len(intersects)):
+    #     c = colors[intersects[i][0] % len(colors)]
+    #     Drawing.DrawLine(intersects[i][1],intersects[i][1],is3d=True,linestyle='None',marker='o',color=c)
+
+    hit_boxes = set()
+    for i,isects in enumerate(bar_intersects):
+        if isects is None:
+            continue
+        for isect in isects:
+            hit_boxes.add(isect[0])
+            c = colors[i % len(colors)]
+            Drawing.DrawLine(isect[1], isect[1], is3d=True, linestyle='None', marker='o', mfc=c, mec='k')
+            Drawing.DrawLine(isect[2], isect[2], is3d=True, linestyle='None', marker='o', mfc='w', mec=c)
+
+    for ilayer,irow,icol in hit_boxes:
+        mdet.bars[ilayer][irow][icol].draw(plt.gca(), c='k')
 
     Drawing.DrawXYslice(trajs, subplot=122)
 

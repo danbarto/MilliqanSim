@@ -118,16 +118,15 @@ def DrawXZslice(trajs, colors=None, ax=None, fig=None, subplot=111, drawBFieldFr
     ax.set_xlim((-15,15))
     ax.set_ylim((-9,9))
 
-def DrawLine(p1, p2, ax=None, is3d=False, color='k', linestyle='-', marker='None'):
+def DrawLine(p1, p2, ax=None, is3d=False, **kwargs):
     # draws a line connecting 2 points
 
     if ax==None:
         ax = plt.gca()
 
     if is3d:
-        ax.plot(xs=[p1[0],p2[0]],ys=[p1[1],p2[1]],zs=[p1[2],p2[2]], color=color, linestyle=linestyle, marker=marker)
-
-    if not is3d:
-        ax.plot([p1[0],p2[0]],[p1[1],p2[1]],color=color,linestyle=linestyle, marker=marker)
+        ax.plot(xs=[p1[0],p2[0]],ys=[p1[1],p2[1]],zs=[p1[2],p2[2]], **kwargs)
+    else:
+        ax.plot([p1[0],p2[0]],[p1[1],p2[1]], **kwargs)
     
 
