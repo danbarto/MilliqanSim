@@ -4,6 +4,12 @@
 import numpy as np
 from Environment import Environment
 import MatterInteraction as mi
+_LOADED_FAST = False
+try:
+    import fast_integrate
+    _LOADED_FAST = True
+except:
+    pass
 
 class Integrator(object):
     def __init__(self, environ, m, Q, dt, nsteps, cutoff_dist=None, cutoff_axis=None, use_var_dt=False, lowv_dx=None,
@@ -94,13 +100,26 @@ class Integrator(object):
         return dxdt
 
     # 4th order runge-kutta integrator
-    def propagate(self, x0):
+    def propagate(self, x0, fast=False, fast_seed=1):
         # x0 is a vector of initial values e.g. (x0,y0,z0,px0,py0,pz0)
         # return value is an N by nsteps+1 array, where N is the size of x0
         # each column is x at the next time step
 
         if self.randomize_charge_sign:
             self.Q *= (2*np.random.randint(2) - 1)
+
+        if fast:
+            if not _LOADED_FAST:
+                raise Exception("Couldn't load fast_integrate! (probably numba not installed)")
+            if self.multiple_scatter != 'pdg' or self.do_energy_loss == False or \
+                    self.environ.mat_setup != 'cms' or self.environ.bfield != 'cms':
+                raise Exception("fast_integrate only implemented for cms bfield/mat setup and pdg multiple scattering")
+            traj = fast_integrate.propagate(
+                fast_seed, self.m, self.Q, x0, self.dt, self.nsteps, self.environ.B, 
+                self.environ.rock_begins, self.environ.rock_ends, self.use_var_dt, self.lowv_dx,
+                self.cutoff_dist, "xyzRr".find(self.cutoff_axis)
+                )
+            return traj[:6,:], traj[6,:]
 
         x0 = np.array(x0, dtype=float)
         x = np.zeros((x0.size, self.nsteps+1))
@@ -135,15 +154,16 @@ class Integrator(object):
                 dx_MS = mi.multipleScatterPDG(self, x[:,i], dt)
             elif self.multiple_scatter == 'kuhn':
                 dx_MS = mi.multipleScatterKuhn(self, x[:,i], dt)
+                
+            dx_EL = np.zeros(x0.size)
+            if self.do_energy_loss:
+                dx_EL = mi.doEnergyLoss(self, x[:,i], dt)            
 
             t += dt
-            x[:,i+1] = x[:,i] + dx_Bfield + dx_MS
+            x[:,i+1] = x[:,i] + dx_Bfield + dx_MS + dx_EL
             tvec[i+1] = t
-            
-            if self.do_energy_loss:
-                x[:,i+1] = mi.doEnergyLoss(self, x[:,i+1], dt)
 
-            isStopped =  np.all(x[3:,i+1]==0)
+            isStopped = np.all(x[3:,i+1]==0)
 
             # check if particle has stopped
             if isStopped:

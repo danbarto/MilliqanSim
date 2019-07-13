@@ -5,7 +5,7 @@ import numpy as np
 from Environment import Environment
 
 def doEnergyLoss(itg, x, dt):
-    ## returns new x after losing proper amount of energy according to Bethe-Bloch
+    ## returns dx from losing energy according to Bethe-Bloch
 
     p = x[3:]
     magp = np.linalg.norm(p)
@@ -37,12 +37,10 @@ def doEnergyLoss(itg, x, dt):
     dE = dEdx * beta*2.9979e1 * dt
 
     if dE>(E-itg.m):
-        return np.array([x[0], x[1], x[2], 0, 0, 0])
+        return np.append(np.zeros(3), -p)
 
     newmagp = np.sqrt((E-dE)**2-itg.m**2)
-    x[3:] = p*newmagp/magp
-
-    return x
+    return np.append(np.zeros(3), p*(newmagp/magp-1))
 
 def multipleScatterPDG(itg, x, dt):
     # get the angles/displacements from above function and return the

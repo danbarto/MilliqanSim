@@ -104,7 +104,8 @@ class Environment(object):
     def LoadCoarseBField(self, fname, usePickle=True):
 
         if usePickle:
-            self.Bx,self.By,self.Bz,self.Bmag = pickle.load(open(fname,"rb"))
+            Bx,By,Bz,Bmag = pickle.load(open(fname,"rb"))
+            self.B = np.stack((Bx,By,Bz),3)
             self.BFieldLoaded = True
             return
 
@@ -112,10 +113,7 @@ class Environment(object):
         NZ = (self.ZMAX-self.ZMIN)/self.DZ + 1
         NPHI = (self.PHIMAX-self.PHIMIN)/self.DPHI + 1
 
-        self.Bx   = np.zeros((NR,NZ,NPHI))
-        self.By   = np.zeros((NR,NZ,NPHI))
-        self.Bz   = np.zeros((NR,NZ,NPHI))
-        self.Bmag = np.zeros((NR,NZ,NPHI))
+        self.B   = np.zeros((NR,NZ,NPHI,3))
 
         with open(fname,'r') as fid:
             for line in fid:
@@ -132,10 +130,7 @@ class Environment(object):
                 ir = int(r/self.DR)
                 iphi = int((phi-self.PHIMIN)/self.DPHI)
 
-                self.Bmag[ir,iz,iphi] = np.linalg.norm(B)
-                self.Bx[ir,iz,iphi] = B[0]
-                self.By[ir,iz,iphi] = B[1]
-                self.Bz[ir,iz,iphi] = B[2]
+                self.B[ir,iz,iphi,:] = B
 
         self.BFieldLoaded = True
 
@@ -143,13 +138,15 @@ class Environment(object):
     def LoadFineBField(fnamex, fnamey=None, fnamez=None):
 
         if fnamey is None:
-            self.Bx,self.By,self.Bz = pickle.load(open(fname,"rb"))
+            Bxf,Byf,Bzf = pickle.load(open(fname,"rb"))
+            self.B = np.stack((Bxf,Byf,Bzf), 3)
             self.BFieldLoaded = True
             return
 
-        self.Bxf = pickle.load(open(fnamex,"rb"))
-        self.Byf = pickle.load(open(fnamey,"rb"))
-        self.Bzf = pickle.load(open(fnamez,"rb"))
+        Bxf = pickle.load(open(fnamex,"rb"))
+        Byf = pickle.load(open(fnamey,"rb"))
+        Bzf = pickle.load(open(fnamez,"rb"))
+        self.B = np.stack((Bxf,Byf,Bzf), 3)
         self.BFieldLoaded = True
 
     def GetMaterial(self, x,y,z):
@@ -259,15 +256,11 @@ class Environment(object):
                     irhigh = int(np.round(ir))
         
                 if self.use_fine_bfield:
-                    Bx = irfrac*self.Bxf[irhigh,iz,iphi]+(1-irfrac)*self.Bxf[irlow,iz,iphi]
-                    By = irfrac*self.Byf[irhigh,iz,iphi]+(1-irfrac)*self.Byf[irlow,iz,iphi]
-                    Bz = irfrac*self.Bzf[irhigh,iz,iphi]+(1-irfrac)*self.Bzf[irlow,iz,iphi]
+                    B = irfrac*self.B[irhigh,iz,iphi,:] + (1-irfrac)*self.B[irlow,iz,iphi,:]
                 else:
-                    Bx = irfrac*self.Bx[irhigh,iz,iphi]+(1-irfrac)*self.Bx[irlow,iz,iphi]
-                    By = irfrac*self.By[irhigh,iz,iphi]+(1-irfrac)*self.By[irlow,iz,iphi]
-                    Bz = irfrac*self.Bz[irhigh,iz,iphi]+(1-irfrac)*self.Bz[irlow,iz,iphi]
+                    B = irfrac*self.B[irhigh,iz,iphi,:] + (1-irfrac)*self.B[irlow,iz,iphi,:]
             
-                return np.array([Bx,By,Bz])
+                return B
 
             else:
                 return np.zeros(3)
