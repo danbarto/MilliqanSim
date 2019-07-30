@@ -163,10 +163,11 @@ class Integrator(object):
             x[:,i+1] = x[:,i] + dx_Bfield + dx_MS + dx_EL
             tvec[i+1] = t
 
-            isStopped = np.all(x[3:,i+1]==0)
+            isStopped = np.linalg.norm(x[3:,i]+dx_EL[3:]) < 1e-6
 
             # check if particle has stopped
             if isStopped:
+                x[3:,i+1] *= 0
                 if not self.suppress_stopped_warn:
                     print "Warning: stopped particle! (initial p ={0:.2f}, at r = {1:.2f})".format(
                         np.linalg.norm(x[3:,0])/1000, np.linalg.norm(x[:3,i+1]))

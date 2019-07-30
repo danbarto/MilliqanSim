@@ -273,8 +273,10 @@ def propagate(seed, m, Q, x0, base_dt, nsteps, B, rock_begins, rock_ends, use_va
         x[:6,i+1] = x[:6,i] + dx_Bfield + dx_MS + dx_EL
         x[6,i+1] = t
 
-        isStopped = x[3,i+1]==0 and x[4,i+1]==0 and x[5,i+1]==0
+        isStopped = np.linalg.norm(x[3:6,i] + dx_EL[3:6]) < 1e-6
+
         if isStopped:
+            x[3:6,i+1] *= 0
             return x[:,:i+2]
 
         if cutoff_dist > 0:
