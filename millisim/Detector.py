@@ -227,6 +227,7 @@ class MilliqanDetector(object):
         self.__nrows = nrows
         self.__ncols = ncols
         self.__nlayers = nlayers
+        self.__nbars = self.nrows*self.ncols*self.nlayers
         self.__bar_width = bar_width
         self.__bar_height = bar_height
         self.__bar_length = bar_length
@@ -257,7 +258,7 @@ class MilliqanDetector(object):
             for irow in range(nrows):
                 layer.append([])
                 row = layer[-1]
-                rows_from_center = -(irow - (nrows-1)/2.0) # negative to start from bottom
+                rows_from_center = -(irow - (nrows-1)/2.0) # negative so we start counting from top
                 for icol in range(ncols):
                     cols_from_center = icol - (ncols-1)/2.0
                     center = self.face.center + \
@@ -272,6 +273,24 @@ class MilliqanDetector(object):
                         height = bar_height,
                         depth = bar_length
                     ))
+
+    def lrc_to_idx(self, ilayer, irow, icol):
+        if not 0 <= ilayer <= self.nlayers-1:
+            raise Exception("ilayer = {0} is not a valid layer number!".format(ilayer))
+        if not 0 <= irow <= self.nrows-1:
+            raise Exception("irow = {0} is not a valid row number!".format(irow))
+        if not 0 <= icol <= self.ncols-1:
+            raise Exception("icol = {0} is not a valid col number!".format(icol))
+        return ilayer*(self.nrows*self.ncols) + irow*self.ncols + icol
+
+    def idx_to_lrc(self, idx):
+        if not 0 <= idx <= self.nlayers*self.nrows*self.ncols - 1:
+            raise Exception("idx = {0} is not in allowed bounds".format(idx))
+        ilayer = idx // (self.nrows*self.ncols)
+        idx -= ilayer * self.nrows*self.ncols
+        irow = idx // self.ncols
+        idx -= irow * self.ncols
+        return (ilayer, irow, idx)
 
     def draw(self, ax, draw_containing_box=False, **kwargs):
         for ilayer in range(self.nlayers):
@@ -315,7 +334,7 @@ class MilliqanDetector(object):
                         i2 = isects[1] if len(isects)>1 else None
                         points.append(((ilayer,irow,icol),i1,i2))
 
-            return points
+            return sorted(points, key=lambda p:np.dot(self.face.norm,p[1]))
 
         # if we're not assuming straight line, step through the trajectory point by point
         points = []
@@ -375,6 +394,12 @@ class MilliqanDetector(object):
     @nlayers.setter
     def nlayers(self, _):
         print "Can't change nlayers after initialization"
+    @property
+    def nbars(self):
+        return self.__nbars
+    @nbars.setter
+    def nbars(self, _):
+        print "Can't change nbars after initialization"
     @property
     def bar_width(self):
         return self.__bar_width
