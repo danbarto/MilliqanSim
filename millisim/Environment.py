@@ -81,7 +81,7 @@ class Environment(object):
         if m is None:
             m = "none"
         m = m.lower()
-        allowed = ["none", "sife", "cms"]
+        allowed = ["none", "sife", "justrock", "cms"]
         allowed += ["unif_"+mat for mat in Environment.materials]
         if m not in allowed:
             raise Exception("Unrecognized material setup: "+m)
@@ -164,14 +164,17 @@ class Environment(object):
             else:
                 return 'fe'
 
+        R = np.sqrt(x**2+y**2+z**2)
+        if self.mat_setup in ["justrock", "cms"] and self.rock_begins < R < self.rock_ends:
+            return 'rock'
+
+        if self.mat_setup == 'justrock':
+            return 'air'
+
         if self.mat_setup == 'cms':
 
             withinLength = -self.CMS_LENGTH/2.0 < z < self.CMS_LENGTH/2.0
             r = np.sqrt(x**2+y**2)
-            R = np.sqrt(r**2+z**2)
-
-            if self.rock_begins < R < self.rock_ends:
-                return 'rock'
 
             if not withinLength:
                 return 'air'

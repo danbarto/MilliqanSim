@@ -1,6 +1,16 @@
 from numba import jit, njit, float64, int32, char, boolean
 import numpy as np
 
+BFIELD_IDS = {
+    "none": 0,
+    "cms": 1,
+}
+
+MAT_IDS = {
+    "justrock": 0,
+    "cms": 1,
+}
+
 ## parameters to load bfield
 ZMIN = -1500
 ZMAX = 1500
@@ -19,8 +29,8 @@ CMS_RADIUS = 3.6
 def _cross(u, v):
     return np.array([u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]])
 
-@njit(float64[:](float64, float64, float64, float64, float64))
-def _get_material(x, y, z, rock_begins, rock_ends):
+@njit(float64[:](float64, float64, float64, int32, float64, float64))
+def _get_material(x, y, z, mat_setup, rock_begins, rock_ends):
     withinLength = -CMS_LENGTH/2.0 < z < CMS_LENGTH/2.0
     r = np.sqrt(x**2+y**2)
     R = np.sqrt(r**2+z**2)
@@ -29,21 +39,25 @@ def _get_material(x, y, z, rock_begins, rock_ends):
     mat = -1
     
     if rock_begins < R < rock_ends:
-        mat = 0    
-    elif not withinLength:
-        mat = 1    
-    elif r < 1.29:
-        mat = 1
-    elif r < 1.8:
-        mat = 2
-    elif r < 2.95:
-        mat = 3
-    elif r < 4.0:
-        mat = 3
-    elif r < 7.0:
-        mat = 3
+        mat = 0  
     else:
-        mat = 1
+        if mat_setup == 1:
+            if not withinLength:
+                mat = 1    
+            elif r < 1.29:
+                mat = 1
+            elif r < 1.8:
+                mat = 2
+            elif r < 2.95:
+                mat = 3
+            elif r < 4.0:
+                mat = 3
+            elif r < 7.0:
+                mat = 3
+            else:
+                mat = 1
+        else:
+            mat = 1
 
     if mat==0:
         return np.array([11.0, 22.0, 2.65, .1002, 136.4, .08301, 3.4210, .0492, 3.0549, 3.7738, 0.0])
@@ -226,8 +240,8 @@ def _get_b(x, y, z, B):
     Bvec = irfrac*B[irhigh,iz,iphi,:] + (1-irfrac)*B[irlow,iz,iphi,:]            
     return Bvec
 
-@njit(float64[:](float64, float64, float64, float64[:], float64[:,:,:,:]))
-def _dxdt_bfield(m, Q, t, x, B):
+@njit(float64[:](float64, float64, float64, float64[:], int32, float64[:,:,:,:]))
+def _dxdt_bfield(m, Q, t, x, bfield_type, B):
     dxdt = np.zeros(6)
     
     p = x[3:]
@@ -236,15 +250,19 @@ def _dxdt_bfield(m, Q, t, x, B):
     v = p/E
     dxdt[:3] = v * 2.9979e-1
 
-    Bvec = _get_b(x[0], x[1], x[2], B)
+    if bfield_type == 0:
+        Bvec = np.zeros(3)
+    if bfield_type ==  1:
+        Bvec = _get_b(x[0], x[1], x[2], B)
 
     dxdt[3:] = (89.8755) * Q * _cross(v,Bvec)
     
     return dxdt
 
-@njit(float64[:,:](int32, float64, float64, float64[:], float64, int32, float64[:,:,:,:], 
-                   float64, float64, boolean, float64, float64, int32))
-def propagate(seed, m, Q, x0, base_dt, nsteps, B, rock_begins, rock_ends, use_var_dt, lowv_dx, cutoff_dist, cutoff_axis):
+@njit(float64[:,:](int32, float64, float64, float64[:], float64, int32, int32, float64[:,:,:,:], 
+                   int32, float64, float64, boolean, float64, float64, int32))
+def propagate(seed, m, Q, x0, base_dt, nsteps, bfield_type, B, mat_setup, rock_begins, rock_ends, 
+              use_var_dt, lowv_dx, cutoff_dist, cutoff_axis):
     np.random.seed(seed)
     x = np.zeros((x0.size+1, nsteps+1))    
     x[:6,0] = x0
@@ -259,13 +277,13 @@ def propagate(seed, m, Q, x0, base_dt, nsteps, B, rock_begins, rock_ends, use_va
                 beta = pOverM/np.sqrt(1+pOverM**2)
                 dt = lowv_dx/(3e-1*beta)
 
-        k1 = _dxdt_bfield(m, Q, t, x[:6,i], B)
-        k2 = _dxdt_bfield(m, Q, t+dt/2, x[:6,i]+dt*k1/2, B)
-        k3 = _dxdt_bfield(m, Q, t+dt/2, x[:6,i]+dt*k2/2, B)
-        k4 = _dxdt_bfield(m, Q, t+dt, x[:6,i]+dt*k3, B)
+        k1 = _dxdt_bfield(m, Q, t, x[:6,i], bfield_type, B)
+        k2 = _dxdt_bfield(m, Q, t+dt/2, x[:6,i]+dt*k1/2, bfield_type, B)
+        k3 = _dxdt_bfield(m, Q, t+dt/2, x[:6,i]+dt*k2/2, bfield_type, B)
+        k4 = _dxdt_bfield(m, Q, t+dt, x[:6,i]+dt*k3, bfield_type, B)
         dx_Bfield = dt/6. * (k1 + 2*k2 + 2*k3 + k4)
 
-        mat = _get_material(x[0,i], x[1,i], x[2,i], rock_begins, rock_ends)        
+        mat = _get_material(x[0,i], x[1,i], x[2,i], mat_setup, rock_begins, rock_ends)        
         dx_MS = _multiple_scatter_PDG(m, Q, x[:6,i], dt, mat)
         dx_EL = _do_energy_loss(m, Q, x[:6,i], dt, mat)
 

@@ -112,12 +112,16 @@ class Integrator(object):
             if not _LOADED_FAST:
                 raise Exception("Couldn't load fast_integrate! (probably numba not installed)")
             if self.multiple_scatter != 'pdg' or self.do_energy_loss == False or \
-                    self.environ.mat_setup != 'cms' or self.environ.bfield != 'cms':
+                    self.environ.mat_setup not in ['cms','justrock'] or \
+                    self.environ.bfield not in ['cms','none']:
                 raise Exception("fast_integrate only implemented for cms bfield/mat setup and pdg multiple scattering")
+            if self.environ.bfield == 'none' and not hasattr(self.environ, "B"):
+                self.environ.B = np.zeros((1,1,1,1))
             traj = fast_integrate.propagate(
-                fast_seed, self.m, self.Q, x0, self.dt, self.nsteps, self.environ.B, 
-                self.environ.rock_begins, self.environ.rock_ends, self.use_var_dt, self.lowv_dx,
-                self.cutoff_dist, "xyzRr".find(self.cutoff_axis)
+                fast_seed, self.m, self.Q, x0, self.dt, self.nsteps, 
+                fast_integrate.BFIELD_IDS[self.environ.bfield], self.environ.B, 
+                fast_integrate.MAT_IDS[self.environ.mat_setup], self.environ.rock_begins, self.environ.rock_ends, 
+                self.use_var_dt, self.lowv_dx, self.cutoff_dist, "xyzRr".find(self.cutoff_axis)
                 )
             return traj[:6,:], traj[6,:]
 
