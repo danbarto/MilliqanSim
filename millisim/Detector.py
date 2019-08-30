@@ -47,6 +47,24 @@ class PlaneDetector(object):
         
         return c1,c2,c3,c4
 
+    def get_line_segments(self):
+        c1,c2,c3,c4 = self.get_corners()
+        return [(c1,c2),(c2,c3),(c3,c4),(c4,c1)]
+
+    def draw(self, ax, **kwargs):
+        if self.width is None or self.height is None:
+            raise Exception("Can't draw an infinite detector!")
+        if "color" not in kwargs and "c" not in kwargs:
+            kwargs["color"] = 'k'
+        # NOTE: y and z axes flipped, for consistency with Drawing module (see Drawing.Draw3Dtrajs)
+        for p1, p2 in self.get_line_segments():
+            ax.plot(xs=[p1[0],p2[0]], ys=[p1[2],p2[2]], zs=[p1[1],p2[1]], **kwargs)
+
+    def transform_from_detcoords(self, v, w, n=None):
+        if n is None:
+            n = self.dist_to_origin
+        return n*self.norm + v*self.unit_v + w*self.unit_w
+
     def find_intersection(self, traj, tvec=None):
         # find the intersection with a plane with normal norm
         # and distance to origin dist. returns None if no intersection
