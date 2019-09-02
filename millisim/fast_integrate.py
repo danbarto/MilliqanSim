@@ -44,15 +44,16 @@ def _get_material(x, y, z, mat_setup, rock_begins, rock_ends):
         if mat_setup == 1:
             if not withinLength:
                 mat = 1    
-            elif r < 1.29:
+            elif r < 1.25:
                 mat = 1
-            elif r < 1.8:
+            elif r < 1.75:
                 mat = 2
-            elif r < 2.95:
-                mat = 3
-            elif r < 4.0:
-                mat = 3
-            elif r < 7.0:
+            elif 1.8 < r < 2.8 or\
+                 3.15 < r < 3.5 or\
+                 3.85 < r < 4.05 or\
+                 4.6 < r < 4.95 or\
+                 5.35 < r < 5.95 or\
+                 6.35 < r < 7.15:
                 mat = 3
             else:
                 mat = 1

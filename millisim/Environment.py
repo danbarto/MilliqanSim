@@ -179,15 +179,16 @@ class Environment(object):
             if not withinLength:
                 return 'air'
 
-            if r < 1.29:
+            if r < 1.25:
                 mat = 'air'
-            elif r < 1.8:
+            elif r < 1.75:
                 mat = 'pbwo4'
-            elif r < 2.95:
-                mat = 'fe'
-            elif r < 4.0:
-                mat = 'fe'
-            elif r < 7.0:
+            elif 1.8 < r < 2.8 or\
+                 3.15 < r < 3.5 or\
+                 3.85 < r < 4.05 or\
+                 4.6 < r < 4.95 or\
+                 5.35 < r < 5.95 or\
+                 6.35 < r < 7.15:
                 mat = 'fe'
             else:
                 mat = 'air'
