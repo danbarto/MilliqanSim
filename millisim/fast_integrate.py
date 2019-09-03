@@ -46,7 +46,7 @@ def _get_material(x, y, z, mat_setup, rock_begins, rock_ends):
                 mat = 1    
             elif r < 1.25:
                 mat = 1
-            elif r < 1.75:
+            elif r < 1.50:
                 mat = 2
             elif 1.8 < r < 2.8 or\
                  3.15 < r < 3.5 or\

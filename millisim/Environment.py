@@ -181,7 +181,7 @@ class Environment(object):
 
             if r < 1.25:
                 mat = 'air'
-            elif r < 1.75:
+            elif r < 1.50:
                 mat = 'pbwo4'
             elif 1.8 < r < 2.8 or\
                  3.15 < r < 3.5 or\
