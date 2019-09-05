@@ -19,7 +19,9 @@ def doEnergyLoss(itg, x, dt):
 
     mat = itg.environ.GetMaterial(x[0],x[1],x[2])
     Z,A,rho,X0 = Environment.materials[mat]
+    rho *= itg.environ.density_mult
     I,a,k,x0,x1,Cbar,delta0 = Environment.dEdx_params[mat]
+
 
     I = I/1e6  ## convert from eV to MeV
 
@@ -125,6 +127,7 @@ def _getKuhnScatteringParams(itg, x, dt):
     mat = itg.environ.GetMaterial(x[0],x[1],x[2])
 
     Z,A,rho,X0 = Environment.materials[mat]
+    rho *= itg.environ.density_mult
 
     z = abs(itg.Q)
 
@@ -208,6 +211,7 @@ def _getScatterAnglePDG(itg, x, dt):
     mat = itg.environ.GetMaterial(x[0],x[1],x[2])
 
     X0 = Environment.materials[mat][3]
+    X0 *= itg.environ.density_mult
 
     if X0 <= 0:
         return np.zeros(6)

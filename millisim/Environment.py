@@ -52,7 +52,7 @@ class Environment(object):
     PHIMAXf = 355
     DPHIf = 5
 
-    def __init__(self, mat_setup=None, bfield=None, bfield_file=None, mat_function=None,
+    def __init__(self, mat_setup=None, bfield=None, bfield_file=None, mat_function=None, density_mult=1.0,
                  use_fine_bfield=False, interpolate_b=True, rock_begins=999999., rock_ends=999999.):
 
         self.BFieldLoaded = False
@@ -64,6 +64,7 @@ class Environment(object):
         self.rock_ends = rock_ends
         self.use_fine_bfield = use_fine_bfield
         self.interpolate_b = interpolate_b
+        self.density_mult = density_mult
 
         if bfield_file is not None:
             if use_fine_bfield:

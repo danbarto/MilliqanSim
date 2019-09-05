@@ -121,7 +121,7 @@ class Integrator(object):
                 fast_seed, self.m, self.Q, x0, self.dt, self.nsteps, 
                 fast_integrate.BFIELD_IDS[self.environ.bfield], self.environ.B, 
                 fast_integrate.MAT_IDS[self.environ.mat_setup], self.environ.rock_begins, self.environ.rock_ends, 
-                self.use_var_dt, self.lowv_dx, self.cutoff_dist, "xyzRr".find(self.cutoff_axis)
+                self.use_var_dt, self.lowv_dx, self.cutoff_dist, "xyzRr".find(self.cutoff_axis), self.environ.density_mult
                 )
             return traj[:6,:], traj[6,:]
 

@@ -71,8 +71,8 @@ def _get_material(x, y, z, mat_setup, rock_begins, rock_ends):
 
     return np.zeros(11)
 
-@njit(float64[:](float64, float64, float64[:], float64, float64[:]))
-def _do_energy_loss(m, Q, x, dt, matdef):
+@njit(float64[:](float64, float64, float64[:], float64, float64[:], float64))
+def _do_energy_loss(m, Q, x, dt, matdef, density_mult):
     p = x[3:]
     magp = np.linalg.norm(p)
     E = np.sqrt(magp**2 + m**2)
@@ -85,7 +85,7 @@ def _do_energy_loss(m, Q, x, dt, matdef):
 
     Z = matdef[0]
     A = matdef[1]
-    rho = matdef[2]
+    rho = matdef[2] * density_mult
     X0 = matdef[3]
     I = matdef[4]
     a = matdef[5]
@@ -153,8 +153,8 @@ def _getNormVector(v):
 
     return random_unit
 
-@njit(float64[:](float64, float64, float64[:], float64, float64[:]))
-def _getScatterAnglePDG(m, Q, x, dt, matdef):
+@njit(float64[:](float64, float64, float64[:], float64, float64[:], float64))
+def _getScatterAnglePDG(m, Q, x, dt, matdef, density_mult):
     p = x[3:]
     magp = np.linalg.norm(p) # must be in MeV
     E = np.sqrt(magp**2 + m**2)
@@ -163,7 +163,7 @@ def _getScatterAnglePDG(m, Q, x, dt, matdef):
 
     dx = (beta*2.9979e-1) * dt  # in m
     
-    X0 = matdef[3]
+    X0 = matdef[3] * density_mult
     if X0 <= 0:
         return np.zeros(6)
 
@@ -185,8 +185,8 @@ def _getScatterAnglePDG(m, Q, x, dt, matdef):
 
     return np.array([thetax,thetay,yx,yy])
 
-@njit(float64[:](float64, float64, float64[:], float64, float64[:]))    
-def _multiple_scatter_PDG(m, Q, x, dt, matdef):
+@njit(float64[:](float64, float64, float64[:], float64, float64[:], float64))    
+def _multiple_scatter_PDG(m, Q, x, dt, matdef, density_mult):
     # get the angles/displacements from above function and return the
     # net change in x=(x,y,z,px,py,pz)
 
@@ -197,7 +197,7 @@ def _multiple_scatter_PDG(m, Q, x, dt, matdef):
     vx = _getNormVector(p)
     vy = _cross(vx, p/np.linalg.norm(p))
 
-    vals = _getScatterAnglePDG(m, Q, x, dt, matdef)
+    vals = _getScatterAnglePDG(m, Q, x, dt, matdef, density_mult)
     thetax = vals[0]
     thetay = vals[1]
     yx = vals[2]
@@ -261,9 +261,9 @@ def _dxdt_bfield(m, Q, t, x, bfield_type, B):
     return dxdt
 
 @njit(float64[:,:](int32, float64, float64, float64[:], float64, int32, int32, float64[:,:,:,:], 
-                   int32, float64, float64, boolean, float64, float64, int32))
+                   int32, float64, float64, boolean, float64, float64, int32, float64))
 def propagate(seed, m, Q, x0, base_dt, nsteps, bfield_type, B, mat_setup, rock_begins, rock_ends, 
-              use_var_dt, lowv_dx, cutoff_dist, cutoff_axis):
+              use_var_dt, lowv_dx, cutoff_dist, cutoff_axis, density_mult):
     np.random.seed(seed)
     x = np.zeros((x0.size+1, nsteps+1))    
     x[:6,0] = x0
@@ -285,8 +285,8 @@ def propagate(seed, m, Q, x0, base_dt, nsteps, bfield_type, B, mat_setup, rock_b
         dx_Bfield = dt/6. * (k1 + 2*k2 + 2*k3 + k4)
 
         mat = _get_material(x[0,i], x[1,i], x[2,i], mat_setup, rock_begins, rock_ends)        
-        dx_MS = _multiple_scatter_PDG(m, Q, x[:6,i], dt, mat)
-        dx_EL = _do_energy_loss(m, Q, x[:6,i], dt, mat)
+        dx_MS = _multiple_scatter_PDG(m, Q, x[:6,i], dt, mat, density_mult)
+        dx_EL = _do_energy_loss(m, Q, x[:6,i], dt, mat, density_mult)
 
         t += dt
         x[:6,i+1] = x[:6,i] + dx_Bfield + dx_MS + dx_EL
