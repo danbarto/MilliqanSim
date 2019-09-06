@@ -163,7 +163,7 @@ def _getScatterAnglePDG(m, Q, x, dt, matdef, density_mult):
 
     dx = (beta*2.9979e-1) * dt  # in m
     
-    X0 = matdef[3] * density_mult
+    X0 = matdef[3] / density_mult
     if X0 <= 0:
         return np.zeros(6)
 

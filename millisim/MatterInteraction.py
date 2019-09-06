@@ -211,7 +211,7 @@ def _getScatterAnglePDG(itg, x, dt):
     mat = itg.environ.GetMaterial(x[0],x[1],x[2])
 
     X0 = Environment.materials[mat][3]
-    X0 *= itg.environ.density_mult
+    X0 /= itg.environ.density_mult
 
     if X0 <= 0:
         return np.zeros(6)
