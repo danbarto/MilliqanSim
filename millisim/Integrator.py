@@ -100,7 +100,7 @@ class Integrator(object):
         return dxdt
 
     # 4th order runge-kutta integrator
-    def propagate(self, x0, fast=False, fast_seed=1):
+    def propagate(self, x0, fast=False, fast_seed=0):
         # x0 is a vector of initial values e.g. (x0,y0,z0,px0,py0,pz0)
         # return value is an N by nsteps+1 array, where N is the size of x0
         # each column is x at the next time step
@@ -111,16 +111,16 @@ class Integrator(object):
         if fast:
             if not _LOADED_FAST:
                 raise Exception("Couldn't load fast_integrate! (probably numba not installed)")
-            if self.multiple_scatter != 'pdg' or self.do_energy_loss == False or \
-                    self.environ.mat_setup not in ['cms','justrock'] or \
+            if self.environ.mat_setup not in ['cms','justrock','unif_fe'] or \
                     self.environ.bfield not in ['cms','none']:
-                raise Exception("fast_integrate only implemented for cms bfield/mat setup and pdg multiple scattering")
+                raise Exception("fast_integrate: mat_setup must be in [cms,justrock,unit_fe], bfield in [cms,none]")
             if self.environ.bfield == 'none' and not hasattr(self.environ, "B"):
                 self.environ.B = np.zeros((1,1,1,1))
             traj = fast_integrate.propagate(
                 fast_seed, self.m, self.Q, x0, self.dt, self.nsteps, 
                 fast_integrate.BFIELD_IDS[self.environ.bfield], self.environ.B, 
-                fast_integrate.MAT_IDS[self.environ.mat_setup], self.environ.rock_begins, self.environ.rock_ends, 
+                fast_integrate.MAT_IDS[self.environ.mat_setup], fast_integrate.MSC_IDS[self.multiple_scatter],
+                self.do_energy_loss, self.environ.rock_begins, self.environ.rock_ends, 
                 self.use_var_dt, self.lowv_dx, self.cutoff_dist, "xyzRr".find(self.cutoff_axis), self.environ.density_mult
                 )
             return traj[:6,:], traj[6,:]
@@ -154,10 +154,8 @@ class Integrator(object):
 
             # add on the effect of MSC if desired
             dx_MS = np.zeros(x0.size)
-            if self.multiple_scatter == 'pdg':
-                dx_MS = mi.multipleScatterPDG(self, x[:,i], dt)
-            elif self.multiple_scatter == 'kuhn':
-                dx_MS = mi.multipleScatterKuhn(self, x[:,i], dt)
+            if self.multiple_scatter is not None:
+                dx_MS = mi.multipleScatter(self, x[:,i], dt)
                 
             dx_EL = np.zeros(x0.size)
             if self.do_energy_loss:

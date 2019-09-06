@@ -7,8 +7,14 @@ BFIELD_IDS = {
 }
 
 MAT_IDS = {
-    "justrock": 0,
+    "justrock": 0,    
     "cms": 1,
+    "unif_fe": 2,
+}
+
+MSC_IDS = {
+    "pdg": 0,    
+    "kuhn": 1,
 }
 
 ## parameters to load bfield
@@ -38,7 +44,10 @@ def _get_material(x, y, z, mat_setup, rock_begins, rock_ends):
     # 0=rock, 1=air, 2=pbwo4, 3=fe
     mat = -1
     
-    if rock_begins < R < rock_ends:
+
+    if mat_setup == 2:
+        mat = 3
+    elif rock_begins < R < rock_ends:
         mat = 0  
     else:
         if mat_setup == 1:
@@ -86,7 +95,7 @@ def _do_energy_loss(m, Q, x, dt, matdef, density_mult):
     Z = matdef[0]
     A = matdef[1]
     rho = matdef[2] * density_mult
-    X0 = matdef[3]
+    X0 = matdef[3] / density_mult
     I = matdef[4]
     a = matdef[5]
     k = matdef[6]
@@ -153,9 +162,82 @@ def _getNormVector(v):
 
     return random_unit
 
+@njit(float64[:](float64[:], float64, float64, float64, float64))
+def _getMSVec(p, thetax, thetay, yx, yy):
+    vx = _getNormVector(p)
+    vy = _cross(vx, p/np.linalg.norm(p))
+    # transverse displacement
+    disp = yx*vx + yy*vy
+    # deflection in momentum
+    defl = np.linalg.norm(p) * (thetax*vx + thetay*vy)
+    
+    return np.array((disp[0],disp[1],disp[2], defl[0],defl[1],defl[2]))
+
 @njit(float64[:](float64, float64, float64[:], float64, float64[:], float64))
-def _getScatterAnglePDG(m, Q, x, dt, matdef, density_mult):
-    p = x[3:]
+def _getKuhnScatteringParams(m, Q, p, dt, matdef, density_mult):
+    Z = matdef[0]
+    A = matdef[1]
+    rho = matdef[2] * density_mult
+    X0 = matdef[3] / density_mult
+    z = abs(Q)
+
+    magp = np.linalg.norm(p)
+    v = p/np.sqrt(magp**2 + m**2)
+    beta = np.linalg.norm(v)
+
+    ds = beta * 2.9979e1 * dt
+
+    Xc = np.sqrt(0.1569 * z**2 * Z*(Z+1) * rho * ds / (magp**2 * beta**2 * A))
+    b = np.log(6700*z**2*Z**(1./3)*(Z+1)*rho*ds/A / (beta**2+1.77e-4*z**2*Z**2))
+
+    if b<3:
+        return np.array([-1.0,-1.0,-1.0])
+
+    ## we want to solve the equation B-log(B) = b. Using Newton-Raphson
+    ## to find zero of f(x) = x-log(x)-b, f'(x)=1-1/x
+    B = b
+    prevB = 2*B    
+    while abs((B-prevB)/prevB)>0.001:
+        prevB = B
+        B = B - (B-np.log(B)-b)/(1-1.0/B)
+
+    return np.array([ds, Xc, B+1])
+    
+
+@njit(float64[:](float64, float64, float64[:], float64, float64[:], float64))
+def _getScatterAngleKuhn(m, Q, p, dt, matdef, density_mult):
+    params = _getKuhnScatteringParams(m, Q, p, dt, matdef, density_mult)
+    ds = params[0]
+    Xc = params[1]
+    B = params[2]
+    if Xc == -1:
+        return np.array([-1.0,-1.0,-1.0,-1.0])
+
+    th1e = Xc * np.sqrt(B-1.25)
+    th1esr2 = th1e / np.sqrt(2)
+
+    Ppi = 1 - 0.827/B + Xc**2/4 * (1/np.sin(th1esr2)**2 - 1)
+    R = np.random.rand() * Ppi
+
+    if R >= 1-0.827/B:
+        R = R-1+0.827/B
+        th = 2*np.arcsin(Xc*np.sin(th1esr2)/np.sqrt(Xc**2-4*R*np.sin(th1esr2)**2))
+    else:
+        th = th1e*np.sqrt(np.log((1-0.827/B)/(1-0.827/B-R))) 
+
+    # generate correlated transverse displacements
+    rho = 0.87
+    z = np.random.normal()
+    yx = z*ds*th1e*np.sqrt((1-rho**2)/3) + rho*th*ds/np.sqrt(3)
+    z = np.random.normal()
+    yy = z*ds*th1e*np.sqrt((1-rho**2)/3)    
+
+    # return np.array([th, 0.0, yx, yy])
+    return np.array([th, 0.0, 0.0, 0.0])
+
+
+@njit(float64[:](float64, float64, float64[:], float64, float64[:], float64))
+def _getScatterAnglePDG(m, Q, p, dt, matdef, density_mult):
     magp = np.linalg.norm(p) # must be in MeV
     E = np.sqrt(magp**2 + m**2)
     v = p/E
@@ -185,8 +267,8 @@ def _getScatterAnglePDG(m, Q, x, dt, matdef, density_mult):
 
     return np.array([thetax,thetay,yx,yy])
 
-@njit(float64[:](float64, float64, float64[:], float64, float64[:], float64))    
-def _multiple_scatter_PDG(m, Q, x, dt, matdef, density_mult):
+@njit(float64[:](int32, float64, float64, float64[:], float64, float64[:], float64))    
+def _multiple_scatter(algo, m, Q, x, dt, matdef, density_mult):
     # get the angles/displacements from above function and return the
     # net change in x=(x,y,z,px,py,pz)
 
@@ -194,20 +276,14 @@ def _multiple_scatter_PDG(m, Q, x, dt, matdef, density_mult):
         return np.zeros(6)
 
     p = x[3:]
-    vx = _getNormVector(p)
-    vy = _cross(vx, p/np.linalg.norm(p))
+    if algo==0:
+        vals = _getScatterAnglePDG(m, Q, p, dt, matdef, density_mult)
+    elif algo==1:
+        vals = _getScatterAngleKuhn(m, Q, p, dt, matdef, density_mult)
+        if vals[0] < 0:
+            vals = _getScatterAnglePDG(m, Q, p, dt, matdef, density_mult)            
 
-    vals = _getScatterAnglePDG(m, Q, x, dt, matdef, density_mult)
-    thetax = vals[0]
-    thetay = vals[1]
-    yx = vals[2]
-    yy = vals[3]
-    # transverse displacement
-    disp = yx*vx + yy*vy
-    # deflection in momentum
-    defl = np.linalg.norm(p) * (thetax*vx + thetay*vy)
-
-    return np.array((disp[0],disp[1],disp[2], defl[0],defl[1],defl[2]))
+    return _getMSVec(p, vals[0], vals[1], vals[2], vals[3])
 
 @njit(float64[:](float64,float64,float64,float64[:,:,:,:]))
 def _get_b(x, y, z, B):
@@ -261,10 +337,11 @@ def _dxdt_bfield(m, Q, t, x, bfield_type, B):
     return dxdt
 
 @njit(float64[:,:](int32, float64, float64, float64[:], float64, int32, int32, float64[:,:,:,:], 
-                   int32, float64, float64, boolean, float64, float64, int32, float64))
-def propagate(seed, m, Q, x0, base_dt, nsteps, bfield_type, B, mat_setup, rock_begins, rock_ends, 
-              use_var_dt, lowv_dx, cutoff_dist, cutoff_axis, density_mult):
-    np.random.seed(seed)
+                   int32, int32, boolean, float64, float64, boolean, float64, float64, int32, float64))
+def propagate(seed, m, Q, x0, base_dt, nsteps, bfield_type, B, mat_setup, msc_algo, do_energy_loss,
+              rock_begins, rock_ends, use_var_dt, lowv_dx, cutoff_dist, cutoff_axis, density_mult):
+    if seed > 0:
+        np.random.seed(seed)
     x = np.zeros((x0.size+1, nsteps+1))    
     x[:6,0] = x0
     t = 0
@@ -285,8 +362,10 @@ def propagate(seed, m, Q, x0, base_dt, nsteps, bfield_type, B, mat_setup, rock_b
         dx_Bfield = dt/6. * (k1 + 2*k2 + 2*k3 + k4)
 
         mat = _get_material(x[0,i], x[1,i], x[2,i], mat_setup, rock_begins, rock_ends)        
-        dx_MS = _multiple_scatter_PDG(m, Q, x[:6,i], dt, mat, density_mult)
-        dx_EL = _do_energy_loss(m, Q, x[:6,i], dt, mat, density_mult)
+        dx_MS = _multiple_scatter(msc_algo, m, Q, x[:6,i], dt, mat, density_mult)
+        dx_EL = np.zeros(x0.size)
+        if do_energy_loss:
+            dx_EL = _do_energy_loss(m, Q, x[:6,i], dt, mat, density_mult)
 
         t += dt
         x[:6,i+1] = x[:6,i] + dx_Bfield + dx_MS + dx_EL

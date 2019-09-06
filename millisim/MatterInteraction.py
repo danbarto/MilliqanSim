@@ -44,19 +44,29 @@ def doEnergyLoss(itg, x, dt):
     newmagp = np.sqrt((E-dE)**2-itg.m**2)
     return np.append(np.zeros(3), p*(newmagp/magp-1))
 
-def multipleScatterPDG(itg, x, dt):
-    # get the angles/displacements from above function and return the
-    # net change in x=(x,y,z,px,py,pz)
+def multipleScatter(itg, x, dt):
+    # get the angles/displacements from relevant function and return the
+    # net change in x=(x,y,z,px,py,pz)    
 
     if itg.environ.GetMaterial(x[0],x[1],x[2])=='air':
         return np.zeros(6)
 
     p = x[3:]
+    if itg.multiple_scatter=='pdg':
+        thetax, thetay, yx, yy = _getScatterAnglePDG(itg, x, dt)
+    elif itg.multiple_scatter=='kuhn':
+        thetax, thetay, yx, yy = _getScatterAngleKuhn(itg, x, dt)
+        if thetax < 0:
+            thetax, thetay, yx, yy = _getScatterAnglePDG(itg, x, dt)
+    else:
+        raise Exception("Invalid MSC algorithm "+itg.multiple_scatter)
 
+    return _getMSVec(p, thetax, thetay, yx, yy)
+
+
+def _getMSVec(p, thetax, thetay, yx, yy):
     vx = _getNormVector(p)
     vy = np.cross(vx, p/np.linalg.norm(p))
-
-    thetax, thetay, yx, yy = _getScatterAnglePDG(itg, x, dt)
 
     # transverse displacement
     disp = yx*vx + yy*vy
@@ -65,26 +75,6 @@ def multipleScatterPDG(itg, x, dt):
     defl = np.linalg.norm(p) * (thetax*vx + thetay*vy)
 
     return np.append(disp, defl)
-
-def multipleScatterKuhn(itg, x, dt):
-    # use the method from Kuhn paper
-
-    if itg.environ.GetMaterial(x[0],x[1],x[2])=='air':
-        return np.zeros(6)
-
-    p = x[3:]
-    theta = _getScatterAngleKuhn(itg, x, dt)
-
-    if theta==-1:
-        return multipleScatterPDG(itg, x, dt)
-
-    vx = _getNormVector(p)
-    
-    # deflection in momentum
-    defl = np.linalg.norm(p) * (theta*vx)
-
-    return np.append(np.zeros(3), defl)
-
 
 def _getNormVector(v):
     # generate and return a random vector in the plane orthogonal to v
@@ -142,10 +132,9 @@ def _getKuhnScatteringParams(itg, x, dt):
     b = np.log(6700*z**2*Z**(1./3)*(Z+1)*rho*ds/A / (beta**2+1.77e-4*z**2*Z**2))
 
     if b<3:
-        return -1,-1
+        return -1,-1,-1
 
     ## we want to solve the equation B-log(B) = b. Using Newton-Raphson
-
     B = b
     prevB = 2*B
     
@@ -155,18 +144,17 @@ def _getKuhnScatteringParams(itg, x, dt):
     while abs((B-prevB)/prevB)>0.001:
         prevB = B
         B = B - f(B)/fp(B)
-
         
     # use B+1 for correction at intermediate angles
-    return Xc, B+1
+    return ds, Xc, B+1
 
 
 def _getScatterAngleKuhn(itg, x, dt):
     # use Kuhn method to multiple scatter
 
-    Xc, B = _getKuhnScatteringParams(itg, x, dt)
+    ds, Xc, B = _getKuhnScatteringParams(itg, x, dt)
     if Xc==-1:
-        return -1
+        return -1, -1, -1, -1
 
     sr2 = np.sqrt(2)
 
@@ -184,7 +172,14 @@ def _getScatterAngleKuhn(itg, x, dt):
     else:
         th = th1e*np.sqrt(np.log((1-0.827/B)/(1-0.827/B-R)))
 
-    return th
+    # generate correlated transverse displacements
+    rho = 0.87
+    z = np.random.normal()
+    yx = z*ds*th1e*np.sqrt((1-rho**2)/3) + th*rho*ds/np.sqrt(3)
+    z = np.random.normal()
+    yy = z*ds*th1e*np.sqrt((1-rho**2)/3)    
+
+    return th, 0.0, yx, yy
 
 def _getScatterAnglePDG(itg, x, dt):
     # return thetax, thetay, yx, yy
