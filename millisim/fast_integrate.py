@@ -10,6 +10,7 @@ MAT_IDS = {
     "justrock": 0,    
     "cms": 1,
     "unif_fe": 2,
+    "unif_rock": 3,
 }
 
 MSC_IDS = {
@@ -47,6 +48,8 @@ def _get_material(x, y, z, mat_setup, rock_begins, rock_ends):
 
     if mat_setup == 2:
         mat = 3
+    elif mat_setup == 3:
+        mat = 0
     elif rock_begins < R < rock_ends:
         mat = 0  
     else:

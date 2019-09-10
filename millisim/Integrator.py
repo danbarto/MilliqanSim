@@ -111,9 +111,9 @@ class Integrator(object):
         if fast:
             if not _LOADED_FAST:
                 raise Exception("Couldn't load fast_integrate! (probably numba not installed)")
-            if self.environ.mat_setup not in ['cms','justrock','unif_fe'] or \
+            if self.environ.mat_setup not in ['cms','justrock','unif_fe','unif_rock'] or \
                     self.environ.bfield not in ['cms','none']:
-                raise Exception("fast_integrate: mat_setup must be in [cms,justrock,unit_fe], bfield in [cms,none]")
+                raise Exception("fast_integrate: mat_setup must be in [cms,justrock,unif_fe,unif_rock], bfield in [cms,none]")
             if self.environ.bfield == 'none' and not hasattr(self.environ, "B"):
                 self.environ.B = np.zeros((1,1,1,1))
             traj = fast_integrate.propagate(

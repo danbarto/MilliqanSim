@@ -172,14 +172,15 @@ def _getScatterAngleKuhn(itg, x, dt):
     else:
         th = th1e*np.sqrt(np.log((1-0.827/B)/(1-0.827/B-R)))
 
-    # generate correlated transverse displacements
-    rho = 0.87
-    z = np.random.normal()
-    yx = z*ds*th1e*np.sqrt((1-rho**2)/3) + th*rho*ds/np.sqrt(3)
-    z = np.random.normal()
-    yy = z*ds*th1e*np.sqrt((1-rho**2)/3)    
+    # # generate correlated transverse displacements
+    # rho = 0.87
+    # z = np.random.normal()
+    # yx = z*ds*th1e*np.sqrt((1-rho**2)/3) + th*rho*ds/np.sqrt(3)
+    # z = np.random.normal()
+    # yy = z*ds*th1e*np.sqrt((1-rho**2)/3)    
 
-    return th, 0.0, yx, yy
+    # return th, 0.0, yx, yy
+    return th, 0.0, 0.0, 0.0
 
 def _getScatterAnglePDG(itg, x, dt):
     # return thetax, thetay, yx, yy
