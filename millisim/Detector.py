@@ -136,7 +136,7 @@ class Box(object):
         self.height = float(height)
         self.depth = float(depth)
 
-    def get_line_segments(self):
+    def get_corners(self):
         c1 = self.center - self.depth/2 * self.unit_w - self.width/2 * self.unit_u - self.height/2 * self.unit_v
         c2 = self.center - self.depth/2 * self.unit_w - self.width/2 * self.unit_u + self.height/2 * self.unit_v
         c3 = self.center - self.depth/2 * self.unit_w + self.width/2 * self.unit_u + self.height/2 * self.unit_v
@@ -145,6 +145,10 @@ class Box(object):
         c6 = self.center + self.depth/2 * self.unit_w - self.width/2 * self.unit_u + self.height/2 * self.unit_v
         c7 = self.center + self.depth/2 * self.unit_w + self.width/2 * self.unit_u + self.height/2 * self.unit_v
         c8 = self.center + self.depth/2 * self.unit_w + self.width/2 * self.unit_u - self.height/2 * self.unit_v
+        return (c1,c2,c3,c4,c5,c6,c7,c8)
+
+    def get_line_segments(self):
+        c1,c2,c3,c4,c5,c6,c7,c8 = self.get_corners()
 
         return [
             (c1, c2),
