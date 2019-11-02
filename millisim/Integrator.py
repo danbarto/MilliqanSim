@@ -154,7 +154,7 @@ class Integrator(object):
 
             # add on the effect of MSC if desired
             dx_MS = np.zeros(x0.size)
-            if self.multiple_scatter is not None:
+            if self.multiple_scatter != 'none':
                 dx_MS = mi.multipleScatter(self, x[:,i], dt)
                 
             dx_EL = np.zeros(x0.size)
