@@ -17,8 +17,9 @@ for time, and electron-charge units for charge. Coordinates used are CMS coordin
 ## Dependencies and setup
 
 The package is entirely written in Python (v 2.7). The only absolute requirement is the [numpy](http://www.numpy.org) 
-library. Optional but useful are the [matplotlib](http://matplotlib.org/) library to make plots, and pyROOT to get input 
-from or output to a ROOT file.
+library. Optional but useful are the [matplotlib](http://matplotlib.org/) library to make plots, pyROOT to get input 
+from or output to a ROOT file, and [numba](http://numba.pydata.org/) if you want to use the `fast_integrate` module to get
+a ~100x speed up.
 
 To setup, run `. setup.sh` from the main directory. This will properly set your PYTHONPATH environment variable
 and check for the required packages.
