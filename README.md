@@ -79,7 +79,7 @@ CMS magnetic field map defined in the file provided to the next argument
 described in [this PDG chapter](http://pdg.lbl.gov/2019/reviews/rpp2018-rev-passage-particles-matter.pdf). `'kuhn'` is a more advanced algorithm that has
 more realistic, larger tails in the scattering angle distribution ("Rutherford scattering"). Probably not necessary).
 7.  `do_energy_loss`: simulate dE/dx energy loss
-8.  `use_var_dt: if this is `True`, then use a variable dt when velocity is low (when momentum < mass)
+8.  `use_var_dt`: if this is `True`, then use a variable dt when velocity is low (when momentum < mass)
 9.  `lowv_dx`: if use_var_dt is set, this is the fixed spatial displacement to use when recomputing dt (in m)
 10. `update func`: if you want to specify a custom update function that computes dx/dt at each timestep
 11. `randomize_charge_sign`: everytime 'propagate' is called, randomly flip sign of Q
