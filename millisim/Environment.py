@@ -106,6 +106,7 @@ class Environment(object):
 
         if usePickle:
             Bx,By,Bz,Bmag = pickle.load(open(fname,"rb"))
+            self.Bmag = Bmag
             self.B = np.stack((Bx,By,Bz),3)
             self.BFieldLoaded = True
             return

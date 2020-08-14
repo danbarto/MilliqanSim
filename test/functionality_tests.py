@@ -62,11 +62,11 @@ for i in tqdm(range(15)):
     traj,_ = itg.propagate(x0)
 
     trajs.append(traj)
-    intersects.append(det.FindIntersection(traj))
+    intersects.append(det.find_intersection(traj))
 
 plt.figure(figsize=(15,7))
 Drawing.Draw3Dtrajs(trajs, subplot=121)
-c1,c2,c3,c4 = det.GetCorners()
+c1,c2,c3,c4 = det.get_corners()
 Drawing.DrawLine(c1,c2,is3d=True)
 Drawing.DrawLine(c2,c3,is3d=True)
 Drawing.DrawLine(c3,c4,is3d=True)
