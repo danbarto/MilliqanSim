@@ -5,11 +5,11 @@ import numpy as np
 from Environment import Environment
 import MatterInteraction as mi
 _LOADED_FAST = False
-try:
-    import fast_integrate
-    _LOADED_FAST = True
-except:
-    pass
+#try:
+#    import fast_integrate
+#    _LOADED_FAST = True
+#except:
+#    pass
 
 class Integrator(object):
     def __init__(self, environ, m, Q, dt, nsteps, cutoff_dist=None, cutoff_axis=None, use_var_dt=False, lowv_dx=None,

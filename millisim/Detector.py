@@ -58,7 +58,7 @@ class PlaneDetector(object):
             kwargs["color"] = 'k'
         # NOTE: y and z axes flipped, for consistency with Drawing module (see Drawing.Draw3Dtrajs)
         for p1, p2 in self.get_line_segments():
-            ax.plot(xs=[p1[0],p2[0]], ys=[p1[2],p2[2]], zs=[p1[1],p2[1]], **kwargs)
+            ax.plot(xs=[p1[0],p2[0]], ys=[p1[1],p2[1]], zs=[p1[2],p2[2]], **kwargs) # swap y/z back??
 
     def transform_from_detcoords(self, v, w, n=None):
         if n is None:
@@ -116,6 +116,7 @@ class PlaneDetector(object):
                 }
 
         return None
+
 
 class Box(object):
     def __init__(self, center, norm1, norm2, width, height, depth):

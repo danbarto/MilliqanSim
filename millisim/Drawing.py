@@ -74,8 +74,8 @@ def DrawXYslice(trajs, colors=None, ax=None, fig=None, subplot=111):
     for i in range(len(trajs)):
         ax.plot(trajs[i][0,:],trajs[i][1,:],'-', linewidth=2, color=colors[i%nc])
 
-    ax.set_xlim((-9,9))
-    ax.set_ylim((-9,9))
+    ax.set_xlim((-4,4))
+    ax.set_ylim((-4,4))
 
 def DrawXZslice(trajs, colors=None, ax=None, fig=None, subplot=111, drawBFieldFromEnviron=None, drawColorbar=False):
     # draws projected trajectories in z=0 plane
