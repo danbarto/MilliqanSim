@@ -16,8 +16,9 @@ for time, and electron-charge units for charge. Coordinates used are CMS coordin
 
 ## Dependencies and setup
 
-The package is entirely written in Python (v 2.7). The only absolute requirement is the [numpy](http://www.numpy.org) 
-library. Optional but useful are the [matplotlib](http://matplotlib.org/) library to make plots, pyROOT to get input 
+The package has been updated to Python 3.7, but was formerly written in Python (v 2.7). Some problems are therefore not unexpected.
+The only absolute requirement is the [numpy](http://www.numpy.org) 
+library. Optional but useful are the [matplotlib](http://matplotlib.org/) and yahist libraries to make plots, uproot to get input 
 from or output to a ROOT file, and [numba](http://numba.pydata.org/) if you want to use the `fast_integrate` module to get
 a ~100x speed up.
 
