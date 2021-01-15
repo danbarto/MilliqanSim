@@ -2,7 +2,7 @@
 ## methods relating to interaction with matter (energy loss, multiple scattering)
 
 import numpy as np
-from Environment import Environment
+from .Environment import Environment
 
 def doEnergyLoss(itg, x, dt):
     ## returns dx from losing energy according to Bethe-Bloch

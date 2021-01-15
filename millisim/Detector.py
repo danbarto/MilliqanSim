@@ -404,54 +404,54 @@ class MilliqanDetector(object):
         return self.__nrows
     @nrows.setter
     def nrows(self, _):
-        print "Can't change nrows after initialization"
+        print("Can't change nrows after initialization")
     @property
     def ncols(self):
         return self.__ncols
     @ncols.setter
     def ncols(self, _):
-        print "Can't change ncols after initialization"
+        print("Can't change ncols after initialization")
     @property
     def nlayers(self):
         return self.__nlayers
     @nlayers.setter
     def nlayers(self, _):
-        print "Can't change nlayers after initialization"
+        print("Can't change nlayers after initialization")
     @property
     def nbars(self):
         return self.__nbars
     @nbars.setter
     def nbars(self, _):
-        print "Can't change nbars after initialization"
+        print("Can't change nbars after initialization")
     @property
     def bar_width(self):
         return self.__bar_width
     @bar_width.setter
     def bar_width(self, _):
-        print "Can't change bar_width after initialization"
+        print("Can't change bar_width after initialization")
     @property
     def bar_height(self):
         return self.__bar_height
     @bar_height.setter
     def bar_height(self, _):
-        print "Can't change bar_height after initialization"
+        print("Can't change bar_height after initialization")
     @property
     def bar_length(self):
         return self.__bar_length
     @bar_length.setter
     def bar_length(self, _):
-        print "Can't change bar_length after initialization"
+        print("Can't change bar_length after initialization")
     @property
     def bar_gap(self):
         return self.__bar_gap
     @bar_gap.setter
     def bar_gap(self, _):
-        print "Can't change bar_gap after initialization"
+        print("Can't change bar_gap after initialization")
     @property
     def layer_gap(self):
         return self.__layer_gap
     @layer_gap.setter
     def layer_gap(self, _):
-        print "Can't change layer_gap after initialization"
+        print("Can't change layer_gap after initialization")
 
 

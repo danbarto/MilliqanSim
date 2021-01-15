@@ -2,15 +2,10 @@
 echo "Setting PYTHONPATH environment variable..."
 export PYTHONPATH=${PWD}:${PYTHONPATH}
 
-echo "Checking for required modules..."
+echo "Checking required packages: numpy, matplotlib, uproot and yahist"
 
-echo -e "try:\n    import numpy\n    print \"-Successfully loaded numpy\"\n\
-except:\n    print\"ERROR: could not import numpy!\"\n    exit(1)" | python
-
-echo -e "try:\n    import matplotlib.pyplot\n    print \"-Successfully loaded matplotlib\"\n\
-except:\n    print\"WARNING: could not import matplotlib!\"\n    exit(1)" | python
-
-echo -e "try:\n    import ROOT\n    print \"-Successfully loaded ROOT\"\n\
-except:\n    print\"WARNING: could not import pyROOT!\"\n    exit(1)" | python
-
+pip list | grep numpy
+pip list | grep matplotlib
+pip list | grep uproot
+pip list | grep yahist
 

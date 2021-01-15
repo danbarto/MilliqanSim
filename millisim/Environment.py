@@ -1,22 +1,22 @@
 ## Detector.py
 ## methods relating to detector and environment properties
 
-import cPickle as pickle
+import h5py
 import numpy as np
 
 class Environment(object):
 
     ## materials definition. (atomic num, atomic weight, density (g/cm3), radiation length (m))
     ## found here: http://pdg.lbl.gov/2019/AtomicNuclearProperties/index.html
-    materials = { "fe"   : (26, 55.845, 7.874, .01757), 
+    materials = { "fe"   : (26, 55.845, 7.874, .01757),
                   "si"   : (14, 28.0855, 2.329, .0937),
                   "pb"   : (82, 207.2, 11.35, .005612),
-                  "air"  : (7.34, 14.719, 1.205e-3, 3.04e2),  
+                  "air"  : (7.34, 14.719, 1.205e-3, 3.04e2),
                   "pbwo4": (31.3, 75.8, 8.3, 0.008903),
                   "bc408": (3.37, 6.23, 1.032, 0.4254),
                   "concrete": (11.10, 22.08, 2.3, .1155),
                   "rock": (11.0, 22.0, 2.65, .1002)  }
-    
+
     ## parameters for dEdx (I, a, k, x0, x1, Cbar, delta0)
     ## found here: http://pdg.lbl.gov/2019/AtomicNuclearProperties/index.html
     dEdx_params = { "fe"   : (286.0, 0.14680, 2.9632, -0.0012, 3.1531, 4.2911, 0.12),
@@ -101,11 +101,13 @@ class Environment(object):
             raise Exception("Unrecognized bfield configuration: "+b)
         self.__bfield = b
 
-    
+
     def LoadCoarseBField(self, fname, usePickle=True):
 
         if usePickle:
-            Bx,By,Bz,Bmag = pickle.load(open(fname,"rb"))
+            h5f = h5py.File('../bfield/bfield_coarse.h5','r')
+            Bx,By,Bz,Bmag = h5f['Bx'][:], h5f['By'][:], h5f['Bz'][:], h5f['Bmag'][:]
+            #Bx,By,Bz,Bmag = pickle.load(open(fname,"rb"))
             self.Bmag = Bmag
             self.B = np.stack((Bx,By,Bz),3)
             self.BFieldLoaded = True
@@ -140,6 +142,7 @@ class Environment(object):
     def LoadFineBField(fnamex, fnamey=None, fnamez=None):
 
         if fnamey is None:
+            ## currently not supported
             Bxf,Byf,Bzf = pickle.load(open(fname,"rb"))
             self.B = np.stack((Bxf,Byf,Bzf), 3)
             self.BFieldLoaded = True
@@ -194,7 +197,7 @@ class Environment(object):
                 mat = 'fe'
             else:
                 mat = 'air'
-                        
+
             return mat
 
         raise Exception("ERROR: invalid material setup. Shouldn't get here")
@@ -204,10 +207,10 @@ class Environment(object):
 
         if self.bfield == 'none':
             return np.zeros(3)
-        
+
         if self.bfield == 'uniform':
             return np.array([0.,0.,1.])
-        
+
         if self.bfield == 'updown':
             r = np.sqrt(x**2+y**2)
             if r<4:
@@ -218,7 +221,7 @@ class Environment(object):
         if self.bfield == 'cms':
             if not self.BFieldLoaded:
                 raise Exception("ERROR: the bfield file must be loaded before calling GetBField")
-    
+
             ## correct for cm usage in bfield file
             x *= 100
             y *= 100
@@ -242,15 +245,15 @@ class Environment(object):
 
                 if phi<0:
                     phi += 360
-        
+
                 nearZ = int(DZ*round(z/DZ))
                 nearPHI = int(DPHI*round(phi/DPHI))
-        
+
                 if nearPHI==360:
                     nearPHI = 0
 
-                iz = (nearZ-ZMIN)/DZ
-                iphi = (nearPHI-PHIMIN)/DPHI
+                iz = int( (nearZ-ZMIN)/DZ )
+                iphi = int( (nearPHI-PHIMIN)/DPHI )
 
                 ir = r/DR
                 irlow = int(np.floor(ir))
@@ -260,16 +263,15 @@ class Environment(object):
                 if not self.interpolate_b:
                     irfrac = 1
                     irhigh = int(np.round(ir))
-        
+
                 if self.use_fine_bfield:
                     B = irfrac*self.B[irhigh,iz,iphi,:] + (1-irfrac)*self.B[irlow,iz,iphi,:]
                 else:
                     B = irfrac*self.B[irhigh,iz,iphi,:] + (1-irfrac)*self.B[irlow,iz,iphi,:]
-            
+
                 return B
 
             else:
                 return np.zeros(3)
 
         raise Exception("ERROR: invalid bfield config. Shouldn't get here")
-
